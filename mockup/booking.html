@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fricaccia — Réserver une table</title>
+<style>
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-ExtraBold.woff') format('woff');font-weight:800;font-display:swap;}
+  @font-face{font-family:'Candery';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/Candery-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+
+  :root{
+    --sugo:#C3171F; --char:#262626; --paper:#FFF7EF; --paper2:#FFFFFF;
+    --basil:#4DAA38; --amber:#EBB125; --border:#EAD9C8; --muted:#96866f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Aloevera',-apple-system,sans-serif;background:var(--paper);color:var(--char);}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--char);}
+  .brand .word{font-family:'Candery',cursive;font-size:24px;color:#fff;}
+  nav a{color:#cfc6b8;text-decoration:none;font-size:13px;font-weight:600;}
+  nav a:hover{color:#fff;}
+
+  main{max-width:640px;margin:40px auto;padding:0 20px;}
+  .hero{text-align:center;margin-bottom:28px;}
+  .hero h2{font-size:26px;margin:0 0 6px;font-weight:800;}
+  .hero p{color:var(--muted);font-size:14px;margin:0;}
+
+  .card{background:var(--paper2);border:1px solid var(--border);border-radius:14px;padding:26px;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;}
+  input,select{width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:10px 12px;border-radius:8px;font-size:14px;font-family:'Aloevera',sans-serif;}
+  input:focus,select:focus{outline:none;border-color:var(--sugo);}
+
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;}
+  .slot{background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;font-size:13px;cursor:pointer;font-weight:600;}
+  .slot.active{background:var(--sugo);border-color:var(--sugo);color:#fff;}
+  .slot.disabled{opacity:.35;cursor:not-allowed;}
+
+  button.submit{width:100%;background:var(--sugo);color:#fff;border:none;padding:14px;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;font-family:'Aloevera',sans-serif;}
+  button.submit:hover{background:#a51218;}
+  button.submit:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+
+  .confirm{display:none;text-align:center;padding:30px 0;}
+  .confirm .ico{font-size:40px;color:var(--basil);margin-bottom:10px;}
+  .confirm h3{margin:0 0 8px;font-size:19px;}
+  .confirm p{color:var(--muted);font-size:13px;}
+  .confirm a{color:var(--sugo);text-decoration:none;font-size:13px;font-weight:700;}
+
+  .note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="word">Fricaccia</span></div>
+  <nav><a href="index.html">Retour au backoffice</a></nav>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Réserver une table</h2>
+    <p>Montpellier ou Perpignan, confirmation immédiate par email</p>
+  </div>
+
+  <div class="card">
+    <form id="bookingForm">
+      <div class="row">
+        <div class="field">
+          <label>Restaurant</label>
+          <select id="restaurant">
+            <option value="Perpignan">Perpignan</option>
+            <option value="Montpellier">Montpellier</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nombre de personnes</label>
+          <select id="pax">
+            <option>1</option><option>2</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7+</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="date" required>
+        </div>
+        <div class="field">
+          <label>Service</label>
+          <select id="service">
+            <option value="midi">Midi</option>
+            <option value="soir" selected>Soir</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Créneau</label>
+        <div class="slots" id="slots">
+          <div class="slot" data-t="19:00">19h00</div>
+          <div class="slot active" data-t="19:30">19h30</div>
+          <div class="slot" data-t="20:00">20h00</div>
+          <div class="slot disabled" data-t="20:30">20h30 (complet)</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="nom" required placeholder="Dupont">
+        </div>
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="prenom" required placeholder="Julie">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="tel" id="tel" required placeholder="06 12 34 56 78">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" required placeholder="julie.dupont@mail.com">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Demande particulière (allergie, anniversaire...)</label>
+        <input type="text" id="note" placeholder="Optionnel">
+      </div>
+
+      <div class="field" style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="checkbox" id="consent" style="width:auto;margin-top:3px;">
+        <label for="consent" style="margin:0;font-size:12px;color:var(--muted);">J'accepte de recevoir par email les offres et actualités Fricaccia (facultatif — résiliable à tout moment, STOP).</label>
+      </div>
+
+      <button type="submit" class="submit">Confirmer la réservation</button>
+    </form>
+
+    <div class="confirm" id="confirm">
+      <div class="ico">✓</div>
+      <h3>Réservation confirmée</h3>
+      <p id="confirmDetail"></p>
+      <a href="index.html">Voir dans le backoffice</a>
+    </div>
+  </div>
+
+  <p class="note">Démo interactive — enregistre en local (localStorage), pas encore branché Supabase.</p>
+</main>
+
+<script>
+  const slots = document.querySelectorAll('.slot:not(.disabled)');
+  slots.forEach(s => s.addEventListener('click', () => {
+    slots.forEach(x => x.classList.remove('active'));
+    s.classList.add('active');
+  }));
+
+  document.getElementById('date').valueAsDate = new Date();
+
+  const STORE_KEY = 'fricaccia_reservations';
+  const LINKS_KEY = 'fricaccia_links';
+  function loadReservations(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ return []; }
+  }
+  function saveReservations(list){
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  }
+  function loadLinks(){
+    try { return JSON.parse(localStorage.getItem(LINKS_KEY)) || []; } catch(e){ return []; }
+  }
+  function saveLinks(list){
+    localStorage.setItem(LINKS_KEY, JSON.stringify(list));
+  }
+
+  // Lien tracé (?link=xxx) : préremplit resto + trace la source + compte le clic
+  let activeLink = null;
+  const linkId = new URLSearchParams(window.location.search).get('link');
+  if (linkId) {
+    const links = loadLinks();
+    activeLink = links.find(l => l.id === linkId);
+    if (activeLink) {
+      activeLink.clics = (activeLink.clics || 0) + 1;
+      saveLinks(links);
+      const restoSelect = document.getElementById('restaurant');
+      restoSelect.value = activeLink.restaurant;
+      restoSelect.disabled = true;
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;';
+      banner.textContent = `Réservation ${activeLink.restaurant}, via ${activeLink.label || activeLink.source}`;
+      document.querySelector('main').insertBefore(banner, document.querySelector('.card'));
+    }
+  }
+
+  function isPaused(resto){
+    try {
+      const p = JSON.parse(localStorage.getItem('fricaccia_pause')) || {};
+      return !!p[resto];
+    } catch(e){ return false; }
+  }
+
+  document.getElementById('restaurant').addEventListener('change', checkPause);
+  function checkPause(){
+    const resto = document.getElementById('restaurant').value;
+    const existing = document.getElementById('pauseNotice');
+    if (existing) existing.remove();
+    document.querySelector('.submit').disabled = false;
+    if (isPaused(resto)) {
+      const notice = document.createElement('div');
+      notice.id = 'pauseNotice';
+      notice.style.cssText = 'background:#FCE2E3;border:1px solid var(--sugo);color:var(--sugo);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;text-align:center;';
+      notice.textContent = `Réservations en ligne temporairement suspendues pour ${resto}. Merci d'appeler le restaurant.`;
+      document.querySelector('.card').prepend(notice);
+      document.querySelector('.submit').disabled = true;
+    }
+  }
+  checkPause();
+
+  document.getElementById('bookingForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    if (isPaused(document.getElementById('restaurant').value)) return;
+
+    const d = document.getElementById('date');
+    // piege TR : jamais toISOString() sur date locale -> construire via getFullYear/getMonth/getDate
+    const dt = d.valueAsDate || new Date();
+    const dateLocale = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+
+    const activeSlot = document.querySelector('.slot.active');
+    const reservation = {
+      id: 'r_' + Date.now(),
+      restaurant: document.getElementById('restaurant').value,
+      pax: document.getElementById('pax').value,
+      date: dateLocale,
+      service: document.getElementById('service').value,
+      heure: activeSlot ? activeSlot.dataset.t : '19:30',
+      nom: document.getElementById('nom').value,
+      prenom: document.getElementById('prenom').value,
+      tel: document.getElementById('tel').value,
+      email: document.getElementById('email').value,
+      note: document.getElementById('note').value,
+      consentement: document.getElementById('consent').checked,
+      statut: 'nouvelle',
+      source: activeLink ? activeLink.source : 'site',
+      linkId: activeLink ? activeLink.id : null,
+      creeLe: new Date().toISOString()
+    };
+
+    const list = loadReservations();
+    list.push(reservation);
+    saveReservations(list);
+
+    document.getElementById('bookingForm').style.display = 'none';
+    document.getElementById('confirm').style.display = 'block';
+    document.getElementById('confirmDetail').textContent =
+      `${reservation.prenom} ${reservation.nom} · ${reservation.pax} pers. · ${reservation.date} à ${reservation.heure} · ${reservation.restaurant}`;
+  });
+</script>
+
+</body>
+</html>

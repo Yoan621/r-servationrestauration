@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fricaccia — BackOffice réservation</title>
+<link rel="stylesheet" href="assets/css/material-icons.css">
+<link rel="stylesheet" href="assets/css/app.css">
+<style>
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Medium.woff') format('woff');font-weight:500;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Bold.woff') format('woff');font-weight:700;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-ExtraBold.woff') format('woff');font-weight:800;font-display:swap;}
+  @font-face{font-family:'Candery';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/Candery-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+
+  :root{
+    /* Palette réelle Fricaccia (extraite du CSS Elementor du site) */
+    --sugo:#C3171F;       /* rouge tomate — accent primaire */
+    --char:#262626;       /* charbon — texte, bandeau comptoir */
+    --paper:#FFF7EF;      /* semoule — fond de travail */
+    --paper2:#FFFFFF;     /* cartes */
+    --basil:#4DAA38;      /* basilic — dispo / ok */
+    --amber:#EBB125;      /* crôute dorée — réservé / attention */
+    --peach:#FFBC7D;      /* pêche — accent doux */
+    --border:#EAD9C8;     /* liseré chaud */
+    --muted:#96866f;      /* taupe chaud — texte secondaire */
+
+    --libre:var(--basil); --reservee:var(--amber); --arrive:#E07B39;
+    --occupee:var(--sugo); --nettoyage:#8A6C4E; --indispo:#B9AFA0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Aloevera',-apple-system,sans-serif;background:var(--paper);color:var(--char);}
+
+  /* Shell : vraie sidebar Huma (assets/css/app.css) + zone de contenu */
+  .app-shell{display:flex;min-height:100vh;}
+  .sidebar{width:264px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;padding:0 0 20px;transition:width .18s;}
+  #appSidebar{background:var(--char) !important;}
+
+  .main-area{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+  /* Repliée = icônes seules (mode mini, pattern réel Huma .sidebar-mini) — desktop uniquement */
+  /* Espacement des items — déplié et replié */
+  .sidebar-menu{padding:0 10px;}
+  .sidebar-menu-item{margin-bottom:6px;}
+  .sidebar-menu-button{border-radius:8px;}
+
+  @media (min-width:901px){
+    .sidebar.collapsed{width:64px;overflow:visible;}
+    .sidebar.collapsed .sidebar-menu-text,
+    .sidebar.collapsed .sidebar-heading,
+    .sidebar.collapsed .sidebar-menu-badge,
+    .sidebar.collapsed .sidebar-menu-toggle-icon,
+    .sidebar.collapsed .sidebar-submenu{display:none;}
+    .sidebar.collapsed .sidebar-brand{justify-content:center;padding:0;}
+    .sidebar.collapsed .sidebar-collapse-btn .material-icons{transform:rotate(180deg);}
+    .sidebar.collapsed .sidebar-heading{height:1px;margin:12px 0;padding:0;overflow:hidden;background:#3a3630;}
+    .sidebar.collapsed .sidebar-menu{padding:0 8px;}
+    .sidebar.collapsed .sidebar-menu-item{position:relative;}
+    .sidebar.collapsed .sidebar-menu-button{justify-content:center;align-items:center;padding:12px 0;}
+    .sidebar.collapsed .sidebar-menu-icon{margin:0;font-size:22px;width:auto;height:auto;line-height:1;}
+    .sidebar.collapsed [data-toggle="sidebar-collapse-group"]{position:relative;}
+    .sidebar.collapsed .sidebar-menu-item:hover .sidebar-menu-text{
+      display:block;position:absolute;left:70px;top:50%;transform:translateY(-50%);background:var(--char);color:#fff;
+      padding:8px 14px;border-radius:6px;white-space:nowrap;font-size:13px;z-index:90;box-shadow:0 4px 12px rgba(0,0,0,.3);
+    }
+  }
+
+  /* Mobile : sidebar toujours pleine largeur ou masquée, jamais en mode mini */
+  @media (max-width:900px){
+    .sidebar{position:fixed;left:0;z-index:80;width:264px;}
+    .sidebar.mobile-hidden{width:0;overflow:hidden;padding:0;box-shadow:none;}
+    .sidebar:not(.mobile-hidden){box-shadow:8px 0 24px rgba(0,0,0,.25);}
+    .sidebar-collapse-btn{display:none !important;} /* le repli mini n'a pas de sens en mobile, seul le hamburger topbar contrôle l'ouverture */
+  }
+
+  .sidebar-brand{display:flex;align-items:center;justify-content:space-between;padding:0 16pt;height:64px;flex-shrink:0;}
+  .brand-logo{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+  .sidebar-collapse-btn{background:transparent;border:1px solid #4a443c;color:#cfc6b8;width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .sidebar-collapse-btn .material-icons{font-size:16px;}
+  .sidebar-menu-badge.badge-accent{background:var(--amber);color:var(--char);}
+  .sidebar-menu-item.active>.sidebar-menu-button,
+  .sidebar-menu-item.active>.sidebar-menu-button .sidebar-menu-icon{color:#fff;background:transparent;}
+  .sidebar-menu-item.active>.sidebar-menu-button{background:var(--sugo);border-radius:8px;}
+  .sidebar-menu-item.open>.sidebar-menu-button .sidebar-menu-icon{color:var(--amber);}
+  .sidebar-menu-item .sidebar-submenu.show{display:block;}
+
+  header{display:flex;align-items:center;gap:16px;padding:14px 28px;background:var(--paper2);border-bottom:1px solid var(--border);}
+  .sidebar-mobile-toggle,.sidebar-collapse-btn-top{display:none;background:var(--paper);border:1px solid var(--border);color:var(--char);width:36px;height:36px;border-radius:50%;cursor:pointer;align-items:center;justify-content:center;}
+  @media (max-width:900px){ .sidebar-mobile-toggle{display:flex;} }
+  .switch{display:flex;gap:8px;align-items:center;margin-left:auto;}
+  .switch button{background:var(--paper);border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Aloevera',sans-serif;}
+  .switch button.active{background:var(--sugo);color:#fff;border-color:var(--sugo);}
+
+  .topbar-search{position:relative;flex:1;max-width:380px;}
+  .topbar-search input{width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:9px 14px;border-radius:20px;font-size:13px;font-family:'Aloevera',sans-serif;}
+  .topbar-search input::placeholder{color:var(--muted);}
+  .topbar-search input:focus{outline:none;border-color:var(--sugo);}
+  .quick-results{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--paper2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-height:320px;overflow-y:auto;z-index:60;}
+  .quick-results.active{display:block;}
+  .quick-results .qr-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;}
+  .quick-results .qr-item:last-child{border-bottom:none;}
+  .quick-results .qr-item:hover{background:var(--paper);}
+  .quick-results .qr-meta{color:var(--muted);font-size:11px;}
+  .quick-results .qr-empty{padding:14px;color:var(--muted);font-size:13px;text-align:center;}
+
+  .bell-wrap{position:relative;}
+  .bell-btn{background:var(--paper);border:1px solid var(--border);color:var(--char);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:15px;position:relative;}
+  .bell-dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--sugo);border:1.5px solid var(--paper2);}
+  .bell-panel{display:none;position:absolute;top:calc(100% + 10px);right:0;width:320px;background:var(--paper2);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);z-index:60;overflow:hidden;}
+  .bell-panel.active{display:block;}
+  .bell-head{padding:12px 16px;font-weight:700;font-size:13px;border-bottom:1px solid var(--border);color:var(--char);}
+  .bell-item{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--char);}
+  .bell-item:last-child{border-bottom:none;}
+  .bell-item .bt{font-size:11px;color:var(--muted);margin-top:2px;}
+  .bell-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;}
+
+  .team-chip{width:36px;height:36px;border-radius:50%;background:var(--amber);color:var(--char);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:'Aloevera',sans-serif;margin-left:4px;}
+
+  .tabs{display:flex;gap:4px;margin-bottom:22px;border-bottom:2px solid var(--border);}
+  .tabs button{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;font-family:'Aloevera',sans-serif;margin-bottom:-2px;}
+  .tabs button.active{color:var(--sugo);border-bottom-color:var(--sugo);}
+  .view{display:none;}
+  .view.active{display:block;}
+  main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px;}
+  .kpi{background:var(--paper2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .kpi .val{font-size:28px;font-weight:800;font-family:'Aloevera',sans-serif;color:var(--char);}
+  .kpi .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+  .kpi.warn .val{color:var(--amber);}
+  .kpi.bad .val{color:var(--sugo);}
+  .kpi.good .val{color:var(--basil);}
+
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+  .card{background:var(--paper2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;}
+  .card h2{font-size:16px;margin:0 0 14px;color:var(--char);font-weight:700;font-family:'Aloevera',sans-serif;}
+
+  .forecast{display:flex;gap:14px;align-items:flex-end;height:120px;margin-top:4px;padding-bottom:24px;}
+  .bar{flex:1;height:100%;background:var(--paper);border:1px solid var(--border);border-radius:6px;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:visible;}
+  .bar .fill{width:100%;background:var(--sugo);border-radius:0 0 6px 6px;min-height:2px;position:relative;}
+  .bar .lbl{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;}
+  .bar .cnt{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--char);white-space:nowrap;}
+  .bar .cnt.zero{color:var(--muted);font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border);font-size:12px;}
+  td{padding:9px 8px;border-bottom:1px solid var(--border);}
+  tr:last-child td{border-bottom:none;}
+
+  .status-pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;}
+  .s-nouvelle{background:#FFF1E0;color:var(--amber);}
+  .s-confirmee{background:#EAF5E6;color:var(--basil);}
+  .s-rappelee{background:#FFF1E0;color:var(--amber);}
+  .s-arrivee{background:#FDE9DA;color:var(--arrive);}
+  .s-installee{background:#EAF5E6;color:var(--basil);}
+  .s-commande_prise{background:#EAF5E6;color:var(--basil);}
+  .s-terminee{background:#F1ECE4;color:var(--muted);}
+  .s-a_nettoyer{background:#F1E7DC;color:var(--nettoyage);}
+  .s-annulee{background:#F1ECE4;color:var(--muted);}
+  .s-no_show{background:#FCE2E3;color:var(--sugo);}
+
+  .actions button{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin-right:4px;font-weight:600;}
+  .actions button:hover{border-color:var(--sugo);color:var(--sugo);}
+
+  .salle{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .table-cell{border-radius:8px;padding:10px;text-align:center;font-size:12px;border:1.5px solid var(--border);font-weight:600;cursor:default;}
+  .table-cell .num{font-size:16px;font-weight:800;display:block;font-family:'Aloevera',sans-serif;}
+  .t-libre{background:rgba(77,170,56,.10);border-color:var(--libre);color:var(--libre);}
+  .t-reservee{background:rgba(235,177,37,.14);border-color:var(--reservee);color:#9c7a12;}
+  .t-arrive{background:rgba(224,123,57,.14);border-color:var(--arrive);color:var(--arrive);}
+  .t-occupee{background:rgba(195,23,31,.10);border-color:var(--occupee);color:var(--occupee);}
+  .t-nettoyage{background:rgba(138,108,78,.14);border-color:var(--nettoyage);color:var(--nettoyage);}
+  .t-indispo{background:rgba(185,175,160,.18);border-color:var(--indispo);color:var(--muted);}
+
+  .waitlist-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .waitlist-item:last-child{border-bottom:none;}
+  .waitlist-item .wtime{color:var(--muted);font-size:11px;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+  .note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;}
+
+  /* Clients */
+  .search{width:100%;max-width:320px;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:9px 14px;border-radius:20px;font-size:13px;margin-bottom:16px;font-family:'Aloevera',sans-serif;}
+  .search:focus{outline:none;border-color:var(--sugo);}
+  .client-row{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .client-row:hover{background:var(--paper);}
+  .client-row:last-child{border-bottom:none;}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--sugo);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;font-family:'Aloevera',sans-serif;}
+  .client-info{flex:1;min-width:0;}
+  .client-info .name{font-size:14px;font-weight:700;}
+  .client-info .meta{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .client-badges{display:flex;gap:6px;flex-shrink:0;}
+  .badge{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:700;}
+  .badge.vip{background:#FDE9DA;color:var(--arrive);}
+  .badge.optin{background:#EAF5E6;color:var(--basil);}
+  .badge.optout{background:#F1ECE4;color:var(--muted);}
+  .empty{color:var(--muted);font-size:13px;padding:22px 0;text-align:center;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(38,38,38,.55);align-items:center;justify-content:center;z-index:50;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:var(--paper2);border:1px solid var(--border);border-radius:14px;padding:26px;width:420px;max-width:90vw;max-height:80vh;overflow-y:auto;}
+  .modal-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .modal-head .avatar{width:48px;height:48px;font-size:16px;}
+  .modal-head h3{margin:0;font-size:17px;font-family:'Aloevera',sans-serif;}
+  .modal-head .sub{font-size:12px;color:var(--muted);}
+  .modal dl{margin:0;}
+  .modal dt{font-size:11px;color:var(--muted);margin-top:14px;font-weight:600;}
+  .modal dd{margin:3px 0 0;font-size:13px;}
+  .modal-close{float:right;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+  .hist-item{font-size:12px;padding:7px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+  .hist-item:last-child{border-bottom:none;}
+
+  /* Liens */
+  .link-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;margin-bottom:18px;}
+  .link-form .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .link-form select,.link-form input{width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:9px 10px;border-radius:7px;font-size:13px;font-family:'Aloevera',sans-serif;}
+  .link-form button{background:var(--sugo);color:#fff;border:none;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .link-row{display:flex;align-items:center;gap:10px;padding:11px 6px;border-bottom:1px solid var(--border);}
+  .link-row:last-child{border-bottom:none;}
+  .link-resto{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;background:#FFF1E0;color:#9c7a12;flex-shrink:0;}
+  .link-body{flex:1;min-width:0;}
+  .link-url{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+  .link-label{font-size:13px;font-weight:700;}
+  .link-stats{font-size:11px;color:var(--muted);flex-shrink:0;text-align:right;min-width:80px;}
+  .link-actions{display:flex;gap:6px;flex-shrink:0;}
+  .link-actions button{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;}
+  .link-actions button:hover{border-color:var(--sugo);color:var(--sugo);}
+  .link-actions button.danger:hover{border-color:var(--sugo);color:var(--sugo);}
+  .copied{color:var(--basil)!important;border-color:var(--basil)!important;}
+
+  /* Réservation manuelle / waitlist / salle interactive */
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .card-head h2{margin:0;}
+  .btn-mini{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:7px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:700;font-family:'Aloevera',sans-serif;}
+  .btn-mini:hover{border-color:var(--sugo);color:var(--sugo);}
+  .table-cell{transition:transform .1s;}
+  .pax-select{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:4px 6px;border-radius:6px;font-size:11px;width:60px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+  .form-grid .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  .form-grid input,.form-grid select{width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:8px 10px;border-radius:7px;font-size:13px;font-family:'Aloevera',sans-serif;}
+  .waitlist-item button{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:3px 9px;border-radius:5px;font-size:11px;cursor:pointer;margin-left:6px;font-weight:600;}
+  .pause-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600;}
+  .pause-toggle input{width:auto;}
+  .retard-badge{color:var(--sugo);font-weight:700;}
+
+  /* Agenda "prochains rendez-vous" */
+  .agenda-item{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .agenda-item:last-child{border-bottom:none;}
+  .agenda-time{background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-align:center;flex-shrink:0;min-width:52px;}
+  .agenda-time .hh{font-size:14px;font-weight:800;color:var(--sugo);font-family:'Aloevera',sans-serif;line-height:1;}
+  .agenda-time .mm{font-size:10px;color:var(--muted);}
+  .agenda-body{flex:1;min-width:0;}
+  .agenda-body .who{font-size:13px;font-weight:700;}
+  .agenda-body .what{font-size:11px;color:var(--muted);}
+
+  /* Retards à relancer */
+  .retard-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .retard-item:last-child{border-bottom:none;}
+  .retard-item .rmin{color:var(--sugo);font-weight:700;font-size:11px;}
+  .retard-item button{background:var(--sugo);color:#fff;border:none;padding:5px 12px;border-radius:16px;font-size:11px;font-weight:700;cursor:pointer;margin-left:8px;}
+  .retard-item button:hover{background:#a51218;}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="sidebar sidebar-dark sidebar-left" id="appSidebar">
+    <div class="sidebar-brand">
+      <img src="assets/images/logo-fricaccia.jpg" alt="Fricaccia" class="brand-logo">
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Réduire le menu">
+        <span class="material-icons">chevron_left</span>
+      </button>
+    </div>
+
+    <div class="sidebar-heading">Réservation</div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item active">
+        <a class="sidebar-menu-button tab-btn active" data-view="dashboard" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">insert_chart_outlined</span>
+          <span class="sidebar-menu-text">Tableau de bord</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="clients" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">people_outline</span>
+          <span class="sidebar-menu-text">Fiches clients</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="links" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">link</span>
+          <span class="sidebar-menu-text">Liens de réservation</span>
+        </a>
+      </li>
+    </ul>
+
+    <div class="sidebar-heading">Paramètres</div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button" data-toggle="sidebar-collapse-group" href="#settings_menu">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">tune</span>
+          <span class="sidebar-menu-text">Configuration</span>
+          <span class="ml-auto sidebar-menu-toggle-icon"></span>
+        </a>
+        <ul class="sidebar-submenu sm-indent" id="settings_menu">
+          <li class="sidebar-menu-item">
+            <a class="sidebar-menu-button disabled" href="#">
+              <span class="sidebar-menu-text">Plan de salle &amp; tables</span>
+              <span class="sidebar-menu-badge badge badge-accent">Bientôt</span>
+            </a>
+          </li>
+          <li class="sidebar-menu-item">
+            <a class="sidebar-menu-button disabled" href="#">
+              <span class="sidebar-menu-text">Utilisateurs &amp; permissions</span>
+              <span class="sidebar-menu-badge badge badge-accent">Bientôt</span>
+            </a>
+          </li>
+          <li class="sidebar-menu-item">
+            <a class="sidebar-menu-button disabled" href="#">
+              <span class="sidebar-menu-text">Intégration Zelty</span>
+              <span class="sidebar-menu-badge badge badge-accent">Bientôt</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <div class="main-area">
+
+    <header>
+      <button class="sidebar-mobile-toggle" id="sidebarMobileToggle"><span class="material-icons">menu</span></button>
+
+      <div class="topbar-search">
+        <input type="text" id="quickSearch" placeholder="Chercher un client, une réservation, un numéro...">
+        <div class="quick-results" id="quickResults"></div>
+      </div>
+
+      <div class="switch">
+        <button class="resto-btn active" data-resto="Perpignan">Perpignan</button>
+        <button class="resto-btn" data-resto="Montpellier">Montpellier</button>
+        <button class="resto-btn" data-resto="">Vue globale</button>
+
+        <div class="bell-wrap">
+          <button class="bell-btn" id="bellBtn">🔔<span class="bell-dot" id="bellDot" style="display:none;"></span></button>
+          <div class="bell-panel" id="bellPanel">
+            <div class="bell-head">Notifications</div>
+            <div id="bellList"></div>
+          </div>
+        </div>
+
+        <div class="team-chip">ÉQ</div>
+      </div>
+    </header>
+
+    <main>
+
+  <div class="view active" id="view-dashboard">
+  <div class="kpis" id="kpisRow"></div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <h2>Prévision couverts par heure</h2>
+        <div class="forecast" id="forecastRow"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 style="margin:0;">Planning du jour</h2>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <label class="pause-toggle"><input type="checkbox" id="pauseToggle"> Pause réservations</label>
+            <button class="btn-mini" id="newResaBtn">+ Réservation manuelle</button>
+          </div>
+        </div>
+        <div id="planningTable"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <h2 style="margin:0;">Prochains rendez-vous</h2>
+          <span class="badge optout" id="agendaCount">0</span>
+        </div>
+        <div id="agendaBox"></div>
+      </div>
+
+      <div class="card">
+        <h2>Plan de salle</h2>
+        <div class="salle" id="salleGrid"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--libre)"></i>Libre</span>
+          <span><i class="dot" style="background:var(--reservee)"></i>Réservée</span>
+          <span><i class="dot" style="background:var(--arrive)"></i>Client arrivé</span>
+          <span><i class="dot" style="background:var(--occupee)"></i>Occupée</span>
+          <span><i class="dot" style="background:var(--nettoyage)"></i>Nettoyage</span>
+          <span><i class="dot" style="background:var(--indispo)"></i>Indisponible</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 style="margin:0;">Liste d'attente</h2>
+          <button class="btn-mini" id="addWaitBtn">+ Ajouter</button>
+        </div>
+        <div id="waitlistBox"></div>
+      </div>
+
+      <div class="card">
+        <h2>Retards à relancer</h2>
+        <div id="retardsBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Données réelles (localStorage), même modèle que le schéma Supabase prévu. Aucune connexion cloud active encore.</p>
+  </div>
+
+  <div class="view" id="view-clients">
+    <div class="card">
+      <h2>Fiches clients</h2>
+      <input type="text" class="search" id="clientSearch" placeholder="Rechercher par nom, email ou téléphone...">
+      <div id="clientList"></div>
+    </div>
+    <p class="note">Fiches générées automatiquement à partir des infos saisies au moment de la réservation (widget site). Ajoute une réservation via le <a href="booking.html" style="color:var(--accent);">widget</a> pour voir apparaître un client ici.</p>
+  </div>
+
+  <div class="view" id="view-links">
+    <div class="card">
+      <h2>Créer un lien de réservation</h2>
+      <div class="link-form">
+        <div class="field">
+          <label>Restaurant</label>
+          <select id="newLinkResto">
+            <option value="Perpignan">Perpignan</option>
+            <option value="Montpellier">Montpellier</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Source</label>
+          <select id="newLinkSource">
+            <option value="site">Site internet</option>
+            <option value="instagram">Instagram</option>
+            <option value="google">Google / GBP</option>
+            <option value="qr">QR code table</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="interne">Réservation interne</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Libellé (optionnel)</label>
+          <input type="text" id="newLinkLabel" placeholder="ex: story Insta sept.">
+        </div>
+        <button id="createLinkBtn">+ Générer le lien</button>
+      </div>
+      <div id="linksList"></div>
+    </div>
+    <p class="note">Chaque lien préremplit le restaurant + trace la source sur la réservation créée. En prod (Vercel) : URL propre par resto (<code>/montpellier</code>, <code>/perpignan</code>) via rewrite — même pattern que <code>/blog/:slug</code> chez TR Réflexologie.</p>
+  </div>
+
+</main>
+
+  </div><!-- /.main-area -->
+</div><!-- /.app-shell -->
+
+<div class="modal-overlay" id="clientModal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-head">
+      <div class="avatar" id="modalAvatar">--</div>
+      <div>
+        <h3 id="modalName">—</h3>
+        <div class="sub" id="modalSub">—</div>
+      </div>
+    </div>
+    <dl>
+      <dt>Email</dt><dd id="modalEmail">—</dd>
+      <dt>Téléphone</dt><dd id="modalTel">—</dd>
+      <dt>Consentement marketing</dt><dd id="modalConsent">—</dd>
+      <dt>Historique des réservations</dt>
+      <dd><div id="modalHistory"></div></dd>
+    </dl>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resaModal">
+  <div class="modal">
+    <button class="modal-close" id="resaModalClose">✕</button>
+    <h3 style="margin-top:0;">Nouvelle réservation manuelle</h3>
+    <div class="form-grid">
+      <div class="field"><label>Nom</label><input type="text" id="mrNom"></div>
+      <div class="field"><label>Prénom</label><input type="text" id="mrPrenom"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="mrTel"></div>
+      <div class="field"><label>Email</label><input type="email" id="mrEmail"></div>
+      <div class="field"><label>Pers.</label><input type="number" id="mrPax" value="2" min="1"></div>
+      <div class="field"><label>Heure</label><input type="time" id="mrHeure" value="19:30"></div>
+      <div class="field"><label>Source</label>
+        <select id="mrSource"><option value="telephone">Téléphone</option><option value="spontane">Passage spontané</option><option value="interne">Interne</option></select>
+      </div>
+      <div class="field"><label>Note</label><input type="text" id="mrNote" placeholder="Optionnel"></div>
+    </div>
+    <button class="btn-mini" id="mrSubmit" style="width:100%;background:var(--accent);color:#fff;border:none;padding:10px;">Créer la réservation</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="waitModal">
+  <div class="modal">
+    <button class="modal-close" id="waitModalClose">✕</button>
+    <h3 style="margin-top:0;">Ajouter à la liste d'attente</h3>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="field"><label>Nom</label><input type="text" id="wNom"></div>
+      <div class="field"><label>Pers.</label><input type="number" id="wPax" value="2" min="1"></div>
+      <div class="field"><label>Téléphone</label><input type="tel" id="wTel"></div>
+      <div class="field"><label>Attente estimée (min)</label><input type="number" id="wAttente" value="15"></div>
+    </div>
+    <button class="btn-mini" id="waitSubmit" style="width:100%;background:var(--accent);color:#fff;border:none;padding:10px;">Ajouter</button>
+  </div>
+</div>
+
+<script>
+  const STORE_KEY = 'fricaccia_reservations';
+  const TABLES_KEY = 'fricaccia_tables_config';
+  const WAIT_KEY = 'fricaccia_waitlist';
+  const PAUSE_KEY = 'fricaccia_pause';
+
+  function loadReservations(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ return []; }
+  }
+  function saveReservations(list){ localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+
+  // Config plan de salle — structure fixe (setup restaurant, pas donnée client fictive)
+  function loadTablesConfig(){
+    let cfg = JSON.parse(localStorage.getItem(TABLES_KEY) || 'null');
+    if (!cfg) {
+      cfg = {
+        Perpignan:   [{n:'T1',c:4},{n:'T2',c:2},{n:'T3',c:4},{n:'T4',c:6},{n:'T5',c:2},{n:'T8',c:2},{n:'T12',c:4},{n:'T15',c:4}],
+        Montpellier: [{n:'M1',c:4},{n:'M2',c:2},{n:'M3',c:4},{n:'M4',c:6},{n:'M5',c:2},{n:'M6',c:4}]
+      };
+      localStorage.setItem(TABLES_KEY, JSON.stringify(cfg));
+    }
+    return cfg;
+  }
+
+  function loadWaitlist(){ try { return JSON.parse(localStorage.getItem(WAIT_KEY)) || []; } catch(e){ return []; } }
+  function saveWaitlist(l){ localStorage.setItem(WAIT_KEY, JSON.stringify(l)); }
+
+  function loadPauses(){ try { return JSON.parse(localStorage.getItem(PAUSE_KEY)) || {}; } catch(e){ return {}; } }
+  function savePauses(p){ localStorage.setItem(PAUSE_KEY, JSON.stringify(p)); }
+
+  let currentResto = 'Perpignan';
+
+  function todayLocal(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  const STATUT_LABELS = {
+    nouvelle:'Nouvelle', confirmee:'Confirmée', rappelee:'Rappelée', retard:'Retard',
+    arrivee:'Arrivé', installee:'Installé', commande_prise:'Commande prise',
+    terminee:'Terminé', a_nettoyer:'À nettoyer', annulee:'Annulée', no_show:'No-show', nouvelle_liste:'Nouvelle'
+  };
+  const STATUT_ORDER = ['nouvelle','confirmee','arrivee','installee','commande_prise','terminee','a_nettoyer'];
+
+  function nextStatut(s){
+    const i = STATUT_ORDER.indexOf(s);
+    if (i === -1 || i === STATUT_ORDER.length - 1) return s;
+    return STATUT_ORDER[i+1];
+  }
+
+  function filteredReservations(){
+    const all = loadReservations();
+    if (!currentResto) return all;
+    return all.filter(r => r.restaurant === currentResto);
+  }
+
+  function renderKpis(){
+    const list = filteredReservations().filter(r => r.date === todayLocal() && r.statut !== 'annulee');
+    const attendus = list.filter(r => ['nouvelle','confirmee','rappelee'].includes(r.statut)).length;
+    const installes = list.filter(r => ['installee','commande_prise'].includes(r.statut)).length;
+    const noshow = list.filter(r => r.statut === 'no_show').length;
+    const tablesCfg = loadTablesConfig();
+    const totalTables = currentResto ? (tablesCfg[currentResto]||[]).length
+      : Object.values(tablesCfg).reduce((a,v)=>a+v.length,0);
+    const tablesOccupees = new Set(list.filter(r => r.tableNum && ['arrivee','installee','commande_prise'].includes(r.statut)).map(r=>r.tableNum)).size;
+    const now = new Date();
+    const retards = list.filter(r => {
+      if (!['nouvelle','confirmee','rappelee'].includes(r.statut)) return false;
+      const [h,m] = r.heure.split(':').map(Number);
+      const resaTime = new Date(); resaTime.setHours(h,m,0,0);
+      return now - resaTime > 10*60*1000;
+    }).length;
+    const wait = loadWaitlist().filter(w => !currentResto || w.restaurant === currentResto);
+
+    document.getElementById('kpisRow').innerHTML = `
+      <div class="kpi"><div class="val">${list.length}</div><div class="lbl">Réservations du jour</div></div>
+      <div class="kpi warn"><div class="val">${attendus}</div><div class="lbl">Clients attendus</div></div>
+      <div class="kpi good"><div class="val">${installes}</div><div class="lbl">Clients installés</div></div>
+      <div class="kpi"><div class="val">${Math.max(totalTables - tablesOccupees,0)}</div><div class="lbl">Tables disponibles</div></div>
+      <div class="kpi bad"><div class="val">${retards}</div><div class="lbl">Retards</div></div>
+      <div class="kpi"><div class="val">${wait.length}</div><div class="lbl">Liste d'attente</div></div>
+    `;
+  }
+
+  function renderForecast(){
+    const list = filteredReservations().filter(r => r.date === todayLocal() && r.statut !== 'annulee');
+    const slots = ['19:00','19:30','20:00','20:30','21:00'];
+    const counts = slots.map(s => list.filter(r => r.heure === s).reduce((a,r)=>a+Number(r.pax||0),0));
+    const max = Math.max(...counts, 1);
+    document.getElementById('forecastRow').innerHTML = slots.map((s,i) => {
+      const pct = counts[i] / max * 100;
+      const cntClass = counts[i] === 0 ? 'cnt zero' : 'cnt';
+      return `<div class="bar">
+        <div class="fill" style="height:${pct}%"></div>
+        <span class="${cntClass}" style="bottom:calc(${pct}% + 6px)">${counts[i]}</span>
+        <span class="lbl">${s.replace(':','h')}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderPlanning(){
+    const list = filteredReservations().filter(r => r.date === todayLocal() && r.statut !== 'annulee')
+      .sort((a,b) => a.heure.localeCompare(b.heure));
+    const el = document.getElementById('planningTable');
+
+    const pauses = loadPauses();
+    document.getElementById('pauseToggle').checked = currentResto ? !!pauses[currentResto] : false;
+    document.getElementById('pauseToggle').disabled = !currentResto;
+
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty">Aucune réservation aujourd\'hui. Crée-en une via "+ Réservation manuelle" ou le <a href="booking.html" style="color:var(--accent);">widget</a>.</div>';
+      return;
+    }
+    const tablesCfg = currentResto ? tablesFor(currentResto) : [];
+    el.innerHTML = `<table>
+      <tr><th>Heure</th><th>Client</th><th>Pers.</th><th>Table</th><th>Statut</th><th>Actions</th></tr>
+      ${list.map(r => {
+        const isRetard = ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r);
+        return `<tr data-id="${r.id}">
+          <td>${r.heure}${isRetard ? ' <span class="retard-badge">⚠</span>' : ''}</td>
+          <td>${r.prenom||''} ${r.nom||''}</td>
+          <td>${r.pax}</td>
+          <td>
+            <select class="pax-select table-assign">
+              <option value="">—</option>
+              ${(tablesCfg.length?tablesCfg:(tablesFor(r.restaurant))).map(t=>`<option value="${t.n}" ${r.tableNum===t.n?'selected':''}>${t.n}</option>`).join('')}
+            </select>
+          </td>
+          <td><span class="status-pill s-${r.statut}">${STATUT_LABELS[r.statut]||r.statut}</span></td>
+          <td class="actions">
+            ${r.statut !== 'annulee' && r.statut !== 'terminee' ? `<button class="advance-btn">${STATUT_LABELS[nextStatut(r.statut)] || 'Avancer'}</button>` : ''}
+            ${!['annulee','no_show','terminee'].includes(r.statut) ? '<button class="noshow-btn">No-show</button>' : ''}
+          </td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+
+    el.querySelectorAll('tr[data-id]').forEach(row => {
+      const id = row.dataset.id;
+      const advBtn = row.querySelector('.advance-btn');
+      if (advBtn) advBtn.addEventListener('click', () => updateReservation(id, r => r.statut = nextStatut(r.statut)));
+      const noBtn = row.querySelector('.noshow-btn');
+      if (noBtn) noBtn.addEventListener('click', () => updateReservation(id, r => r.statut = 'no_show'));
+      row.querySelector('.table-assign').addEventListener('change', (e) => updateReservation(id, r => r.tableNum = e.target.value || null));
+    });
+  }
+
+  function isLate(r){
+    const [h,m] = r.heure.split(':').map(Number);
+    const t = new Date(); t.setHours(h,m,0,0);
+    return new Date() - t > 10*60*1000;
+  }
+
+  function updateReservation(id, mutate){
+    const list = loadReservations();
+    const r = list.find(x => x.id === id);
+    if (!r) return;
+    mutate(r);
+    saveReservations(list);
+    renderAll();
+  }
+
+  function tablesFor(resto){
+    return loadTablesConfig()[resto] || [];
+  }
+
+  function renderSalle(){
+    const el = document.getElementById('salleGrid');
+    const resto = currentResto || 'Perpignan';
+    const tables = tablesFor(resto);
+    const today = todayLocal();
+    const list = loadReservations().filter(r => r.restaurant === resto && r.date === today && r.statut !== 'annulee');
+
+    el.innerHTML = tables.map(t => {
+      const r = list.find(x => x.tableNum === t.n);
+      let cls = 't-libre', label = 'libre';
+      if (r) {
+        if (['installee','commande_prise'].includes(r.statut)) { cls='t-occupee'; label='occupée'; }
+        else if (r.statut === 'arrivee') { cls='t-arrive'; label='arrivé'; }
+        else if (['nouvelle','confirmee','rappelee'].includes(r.statut)) { cls='t-reservee'; label=r.heure; }
+        else if (r.statut === 'a_nettoyer') { cls='t-nettoyage'; label='nettoyage'; }
+      }
+      return `<div class="table-cell ${cls}"><span class="num">${t.n}</span>${t.c}p · ${label}</div>`;
+    }).join('');
+  }
+
+  function renderWaitlist(){
+    const el = document.getElementById('waitlistBox');
+    const list = loadWaitlist().filter(w => !currentResto || w.restaurant === currentResto);
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty">Liste d\'attente vide.</div>';
+      return;
+    }
+    el.innerHTML = list.map(w => `
+      <div class="waitlist-item" data-id="${w.id}">
+        <div>${w.nom} — ${w.pax} pers. ${w.tel ? '· '+w.tel : ''}</div>
+        <div class="wtime">${w.heureAjout} · att. ~${w.attente}min <button class="wait-remove">Retirer</button></div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.wait-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('[data-id]').dataset.id;
+        saveWaitlist(loadWaitlist().filter(w => w.id !== id));
+        renderWaitlist();
+        renderKpis();
+      });
+    });
+  }
+
+  function renderAgenda(){
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    const list = filteredReservations()
+      .filter(r => r.date === todayLocal() && ['nouvelle','confirmee','rappelee'].includes(r.statut))
+      .filter(r => { const [h,m] = r.heure.split(':').map(Number); return (h*60+m) >= nowMin - 15; })
+      .sort((a,b) => a.heure.localeCompare(b.heure))
+      .slice(0,5);
+    document.getElementById('agendaCount').textContent = list.length;
+    const el = document.getElementById('agendaBox');
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty">Rien de prévu pour l\'instant.</div>';
+      return;
+    }
+    el.innerHTML = list.map(r => {
+      const [h,m] = r.heure.split(':');
+      return `<div class="agenda-item">
+        <div class="agenda-time"><div class="hh">${h}h${m}</div></div>
+        <div class="agenda-body">
+          <div class="who">${r.prenom||''} ${r.nom||''}</div>
+          <div class="what">${r.pax} pers. · ${r.restaurant}${r.tableNum ? ' · '+r.tableNum : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderRetards(){
+    const list = filteredReservations()
+      .filter(r => r.date === todayLocal() && ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r));
+    const el = document.getElementById('retardsBox');
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty">Aucun retard en cours.</div>';
+      return;
+    }
+    const now = new Date();
+    el.innerHTML = list.map(r => {
+      const [h,m] = r.heure.split(':').map(Number);
+      const resaTime = new Date(); resaTime.setHours(h,m,0,0);
+      const minLate = Math.round((now - resaTime) / 60000);
+      return `<div class="retard-item" data-id="${r.id}">
+        <div>${r.prenom||''} ${r.nom||''} — ${r.pax}p, ${r.heure} <span class="rmin">(+${minLate}min)</span></div>
+        <button class="call-btn">Relancer</button>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.call-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('[data-id]').dataset.id;
+        updateReservation(id, r => r.statut = 'rappelee');
+      });
+    });
+  }
+
+  // Cloche notifications — générée depuis l'état réel (pas de fictif)
+  function computeNotifications(){
+    const notifs = [];
+    const list = filteredReservations().filter(r => r.date === todayLocal());
+    list.forEach(r => {
+      if (['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r)) {
+        notifs.push({ type:'retard', text:`${r.prenom||''} ${r.nom||''} a du retard (${r.heure})` });
+      }
+    });
+    const wait = loadWaitlist().filter(w => !currentResto || w.restaurant === currentResto);
+    if (wait.length > 0) notifs.push({ type:'attente', text:`${wait.length} client(s) en liste d'attente` });
+    const pauses = loadPauses();
+    if (currentResto && pauses[currentResto]) notifs.push({ type:'pause', text:`Réservations en pause pour ${currentResto}` });
+    return notifs;
+  }
+
+  function renderBell(){
+    const notifs = computeNotifications();
+    document.getElementById('bellDot').style.display = notifs.length ? 'block' : 'none';
+    const el = document.getElementById('bellList');
+    el.innerHTML = notifs.length
+      ? notifs.map(n => `<div class="bell-item">${n.text}</div>`).join('')
+      : '<div class="bell-empty">Aucune notification.</div>';
+  }
+
+  document.getElementById('bellBtn').addEventListener('click', () => {
+    document.getElementById('bellPanel').classList.toggle('active');
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.bell-wrap')) document.getElementById('bellPanel').classList.remove('active');
+  });
+
+  // Recherche rapide (topbar)
+  document.getElementById('quickSearch').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const el = document.getElementById('quickResults');
+    if (!q) { el.classList.remove('active'); return; }
+    const matches = loadReservations().filter(r =>
+      (r.nom||'').toLowerCase().includes(q) ||
+      (r.prenom||'').toLowerCase().includes(q) ||
+      (r.tel||'').includes(q) ||
+      (r.email||'').toLowerCase().includes(q)
+    ).slice(0,8);
+    el.innerHTML = matches.length
+      ? matches.map(r => `<div class="qr-item"><span>${r.prenom||''} ${r.nom||''}</span><span class="qr-meta">${r.date} · ${r.heure} · ${r.restaurant}</span></div>`).join('')
+      : '<div class="qr-empty">Aucun résultat.</div>';
+    el.classList.add('active');
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.topbar-search')) document.getElementById('quickResults').classList.remove('active');
+  });
+
+  function renderAll(){
+    renderKpis();
+    renderForecast();
+    renderPlanning();
+    renderSalle();
+    renderWaitlist();
+    renderAgenda();
+    renderRetards();
+    renderBell();
+  }
+
+  // Switch restaurant
+  document.querySelectorAll('.resto-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.resto-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentResto = btn.dataset.resto;
+      renderAll();
+    });
+  });
+
+  // Pause réservations (par restaurant)
+  document.getElementById('pauseToggle').addEventListener('change', (e) => {
+    if (!currentResto) return;
+    const p = loadPauses();
+    p[currentResto] = e.target.checked;
+    savePauses(p);
+  });
+
+  // Nouvelle réservation manuelle
+  document.getElementById('newResaBtn').addEventListener('click', () => {
+    document.getElementById('resaModal').classList.add('active');
+  });
+  document.getElementById('resaModalClose').addEventListener('click', () => {
+    document.getElementById('resaModal').classList.remove('active');
+  });
+  document.getElementById('mrSubmit').addEventListener('click', () => {
+    const nom = document.getElementById('mrNom').value.trim();
+    if (!nom) { document.getElementById('mrNom').focus(); return; }
+    const list = loadReservations();
+    list.push({
+      id: 'r_' + Date.now(),
+      restaurant: currentResto || 'Perpignan',
+      pax: document.getElementById('mrPax').value,
+      date: todayLocal(),
+      heure: document.getElementById('mrHeure').value,
+      nom, prenom: document.getElementById('mrPrenom').value,
+      tel: document.getElementById('mrTel').value,
+      email: document.getElementById('mrEmail').value,
+      note: document.getElementById('mrNote').value,
+      consentement: false,
+      statut: 'confirmee',
+      source: document.getElementById('mrSource').value,
+      linkId: null,
+      creeLe: new Date().toISOString()
+    });
+    saveReservations(list);
+    document.getElementById('resaModal').classList.remove('active');
+    ['mrNom','mrPrenom','mrTel','mrEmail','mrNote'].forEach(id => document.getElementById(id).value = '');
+    renderAll();
+  });
+
+  // Liste d'attente — ajout manuel
+  document.getElementById('addWaitBtn').addEventListener('click', () => {
+    document.getElementById('waitModal').classList.add('active');
+  });
+  document.getElementById('waitModalClose').addEventListener('click', () => {
+    document.getElementById('waitModal').classList.remove('active');
+  });
+  document.getElementById('waitSubmit').addEventListener('click', () => {
+    const nom = document.getElementById('wNom').value.trim();
+    if (!nom) { document.getElementById('wNom').focus(); return; }
+    const list = loadWaitlist();
+    const now = new Date();
+    list.push({
+      id: 'w_' + Date.now(),
+      restaurant: currentResto || 'Perpignan',
+      nom, pax: document.getElementById('wPax').value,
+      tel: document.getElementById('wTel').value,
+      attente: document.getElementById('wAttente').value,
+      heureAjout: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+    });
+    saveWaitlist(list);
+    document.getElementById('waitModal').classList.remove('active');
+    ['wNom','wTel'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('waitModal').classList.remove('active');
+    renderAll();
+  });
+
+  // Onglets (boutons sidebar)
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        const li = b.closest('.sidebar-menu-item');
+        if (li) li.classList.remove('active');
+      });
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      const li = btn.closest('.sidebar-menu-item');
+      if (li) li.classList.add('active');
+      document.getElementById('view-' + btn.dataset.view).classList.add('active');
+      if (btn.dataset.view === 'clients') renderClients();
+      if (btn.dataset.view === 'links') renderLinks();
+      if (window.innerWidth <= 900) document.getElementById('appSidebar').classList.add('mobile-hidden');
+    });
+  });
+
+  // Sous-menu sidebar repliable ("Configuration")
+  document.querySelectorAll('[data-toggle="sidebar-collapse-group"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const li = btn.closest('.sidebar-menu-item');
+      const submenu = li.querySelector('.sidebar-submenu');
+      li.classList.toggle('open');
+      submenu.classList.toggle('show');
+    });
+  });
+
+  // Réduire/déplier la sidebar (desktop)
+  document.getElementById('sidebarCollapseBtn').addEventListener('click', () => {
+    document.getElementById('appSidebar').classList.toggle('collapsed');
+  });
+
+  // Menu mobile (hamburger topbar)
+  document.getElementById('sidebarMobileToggle').addEventListener('click', () => {
+    document.getElementById('appSidebar').classList.toggle('mobile-hidden');
+  });
+
+  // Responsive réel : re-sync l'état de la sidebar chaque fois qu'on franchit le seuil 900px
+  // (redimensionnement live, pas juste au chargement) — desktop replié n'a pas de sens en mobile.
+  const mobileBreakpoint = window.matchMedia('(max-width:900px)');
+  function syncSidebarBreakpoint(e){
+    const sb = document.getElementById('appSidebar');
+    if (e.matches) {
+      sb.classList.remove('collapsed');
+      sb.classList.add('mobile-hidden');
+    } else {
+      sb.classList.remove('mobile-hidden');
+    }
+  }
+  mobileBreakpoint.addEventListener('change', syncSidebarBreakpoint);
+  syncSidebarBreakpoint(mobileBreakpoint);
+
+  // Gestionnaire de liens
+  const LINKS_KEY = 'fricaccia_links';
+  function loadLinks(){
+    try { return JSON.parse(localStorage.getItem(LINKS_KEY)) || []; } catch(e){ return []; }
+  }
+  function saveLinks(list){
+    localStorage.setItem(LINKS_KEY, JSON.stringify(list));
+  }
+
+  document.getElementById('createLinkBtn').addEventListener('click', () => {
+    const links = loadLinks();
+    const link = {
+      id: 'l_' + Date.now(),
+      restaurant: document.getElementById('newLinkResto').value,
+      source: document.getElementById('newLinkSource').value,
+      label: document.getElementById('newLinkLabel').value || '',
+      clics: 0,
+      resas: 0,
+      creeLe: new Date().toISOString()
+    };
+    links.push(link);
+    saveLinks(links);
+    document.getElementById('newLinkLabel').value = '';
+    renderLinks();
+  });
+
+  function linkUrl(link){
+    return `booking.html?link=${link.id}`;
+  }
+
+  function renderLinks(){
+    const links = loadLinks();
+    const el = document.getElementById('linksList');
+    if (links.length === 0) {
+      el.innerHTML = '<div class="empty">Aucun lien créé. Génère-en un ci-dessus (ex: un par restaurant, ou un par canal Instagram/Google/QR).</div>';
+      return;
+    }
+    // compte les résas réelles par lien
+    const res = loadReservations();
+    links.forEach(l => { l.resas = res.filter(r => r.linkId === l.id).length; });
+
+    el.innerHTML = links.slice().reverse().map(l => `
+      <div class="link-row" data-id="${l.id}">
+        <span class="link-resto">${l.restaurant}</span>
+        <div class="link-body">
+          <div class="link-label">${l.label || (l.source.charAt(0).toUpperCase() + l.source.slice(1))}</div>
+          <span class="link-url">${window.location.origin}${window.location.pathname.replace('index.html','')}${linkUrl(l)}</span>
+        </div>
+        <div class="link-stats">${l.clics} clic(s) · ${l.resas} résa(s)</div>
+        <div class="link-actions">
+          <button class="copy-btn">Copier</button>
+          <button class="danger del-btn">Suppr.</button>
+        </div>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('.link-row').forEach(row => {
+      const id = row.dataset.id;
+      const link = links.find(l => l.id === id);
+      row.querySelector('.copy-btn').addEventListener('click', (e) => {
+        const url = window.location.origin + window.location.pathname.replace('index.html','') + linkUrl(link);
+        navigator.clipboard.writeText(url).then(() => {
+          e.target.textContent = 'Copié ✓';
+          e.target.classList.add('copied');
+          setTimeout(() => { e.target.textContent = 'Copier'; e.target.classList.remove('copied'); }, 1500);
+        });
+      });
+      row.querySelector('.del-btn').addEventListener('click', () => {
+        saveLinks(loadLinks().filter(l => l.id !== id));
+        renderLinks();
+      });
+    });
+  }
+
+  function initials(prenom, nom){
+    return ((prenom||'?')[0] + (nom||'?')[0]).toUpperCase();
+  }
+
+  function buildClients(){
+    const res = loadReservations();
+    const map = {};
+    res.forEach(r => {
+      const key = (r.email || r.tel || '').toLowerCase();
+      if (!key) return;
+      if (!map[key]) {
+        map[key] = { nom: r.nom, prenom: r.prenom, email: r.email, tel: r.tel, consentement: false, historique: [] };
+      }
+      map[key].consentement = map[key].consentement || !!r.consentement;
+      map[key].historique.push(r);
+    });
+    return Object.values(map);
+  }
+
+  function renderClients(filter){
+    const listEl = document.getElementById('clientList');
+    let clients = buildClients();
+    if (filter) {
+      const f = filter.toLowerCase();
+      clients = clients.filter(c =>
+        (c.nom||'').toLowerCase().includes(f) ||
+        (c.prenom||'').toLowerCase().includes(f) ||
+        (c.email||'').toLowerCase().includes(f) ||
+        (c.tel||'').includes(f)
+      );
+    }
+    if (clients.length === 0) {
+      listEl.innerHTML = '<div class="empty">Aucun client encore — réserve via le widget pour en créer un.</div>';
+      return;
+    }
+    listEl.innerHTML = clients.map((c, i) => `
+      <div class="client-row" data-idx="${i}">
+        <div class="avatar">${initials(c.prenom, c.nom)}</div>
+        <div class="client-info">
+          <div class="name">${c.prenom || ''} ${c.nom || ''}</div>
+          <div class="meta">${c.email || '—'} · ${c.tel || '—'} · ${c.historique.length} résa(s)</div>
+        </div>
+        <div class="client-badges">
+          ${c.consentement ? '<span class="badge optin">Opt-in</span>' : '<span class="badge optout">Sans consentement</span>'}
+        </div>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.client-row').forEach(row => {
+      row.addEventListener('click', () => openClientModal(clients[row.dataset.idx]));
+    });
+  }
+
+  function openClientModal(c){
+    document.getElementById('modalAvatar').textContent = initials(c.prenom, c.nom);
+    document.getElementById('modalName').textContent = `${c.prenom || ''} ${c.nom || ''}`;
+    document.getElementById('modalSub').textContent = `${c.historique.length} réservation(s)`;
+    document.getElementById('modalEmail').textContent = c.email || '—';
+    document.getElementById('modalTel').textContent = c.tel || '—';
+    document.getElementById('modalConsent').innerHTML = c.consentement
+      ? '<span class="badge optin">Opt-in — emails autorisés</span>'
+      : '<span class="badge optout">Aucun consentement — ne pas démarcher</span>';
+    document.getElementById('modalHistory').innerHTML = c.historique.map(r => `
+      <div class="hist-item">
+        <span>${r.date} · ${r.heure} · ${r.pax}p · ${r.restaurant}</span>
+        <span style="color:var(--muted);">${r.statut}</span>
+      </div>
+    `).join('');
+    document.getElementById('clientModal').classList.add('active');
+  }
+  document.getElementById('modalClose').addEventListener('click', () => {
+    document.getElementById('clientModal').classList.remove('active');
+  });
+  document.getElementById('clientModal').addEventListener('click', (e) => {
+    if (e.target.id === 'clientModal') e.currentTarget.classList.remove('active');
+  });
+
+  document.getElementById('clientSearch').addEventListener('input', (e) => renderClients(e.target.value));
+
+  renderAll();
+</script>
+
+</body>
+</html>
