@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fricaccia — Réserver une table</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
@@ -21,7 +22,7 @@
   nav a{color:#cfc6b8;text-decoration:none;font-size:13px;font-weight:600;}
   nav a:hover{color:#fff;}
 
-  main{max-width:640px;margin:40px auto;padding:0 20px;}
+  main{max-width:760px;margin:40px auto;padding:0 20px;}
   .hero{text-align:center;margin-bottom:28px;}
   .hero h2{font-size:26px;margin:0 0 6px;font-weight:800;}
   .hero p{color:var(--muted);font-size:14px;margin:0;}
@@ -47,15 +48,46 @@
   .confirm h3{margin:0 0 8px;font-size:19px;}
   .confirm p{color:var(--muted);font-size:13px;}
   .confirm a{color:var(--sugo);text-decoration:none;font-size:13px;font-weight:700;}
+  .confirm .cal-btn{display:inline-block;margin:14px 0 4px;background:var(--char);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;}
+  .confirm .cal-btn:hover{background:#000;}
 
   .note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;}
+
+  /* Étape 2 — style Zenchef : formulaire contact + récap sticky */
+  .step2-top{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .back-link{background:none;border:none;color:var(--char);font-size:20px;cursor:pointer;padding:4px;line-height:1;}
+  .back-link:hover{color:var(--sugo);}
+  .step2-top h3{margin:0;font-size:20px;font-weight:800;}
+
+  .step2-grid{display:grid;grid-template-columns:1fr 260px;gap:28px;align-items:start;}
+  @media (max-width:700px){ .step2-grid{grid-template-columns:1fr;} .step2-summary{order:-1;} }
+
+  .civilite-group{display:flex;gap:18px;margin-bottom:18px;}
+  .civilite-opt{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;}
+  .civilite-opt input{width:auto;}
+
+  .phone-input{display:flex;gap:8px;}
+  .phone-prefix{flex:0 0 auto;display:flex;align-items:center;gap:4px;background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:14px;color:var(--muted);}
+  .phone-input input{flex:1;}
+
+  .check-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;}
+  .check-row input{width:auto;margin-top:3px;}
+  .check-row label{margin:0;font-size:12px;color:var(--muted);font-weight:400;}
+  .check-row.required label{color:var(--char);}
+  .check-row .req{color:var(--sugo);}
+  .field-error{color:var(--sugo);font-size:11px;margin:-8px 0 12px;display:none;}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:18px 0;}
+
+  .summary-card{background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:20px;position:sticky;top:20px;}
+  .summary-card .summary-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-weight:800;font-size:14px;}
+  .summary-card .summary-head a{color:var(--sugo);font-size:12px;font-weight:700;text-decoration:none;}
+  .summary-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;color:var(--char);}
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand"><span class="word">Fricaccia</span></div>
-  <nav><a href="index.html">Retour au backoffice</a></nav>
 </header>
 
 <main>
@@ -66,103 +98,254 @@
 
   <div class="card">
     <form id="bookingForm">
-      <div class="row">
-        <div class="field">
-          <label>Restaurant</label>
-          <select id="restaurant">
-            <option value="Perpignan">Perpignan</option>
-            <option value="Montpellier">Montpellier</option>
-          </select>
+
+      <div id="step1">
+        <div class="row">
+          <div class="field">
+            <label>Restaurant</label>
+            <select id="restaurant">
+              <option value="Perpignan">Perpignan</option>
+              <option value="Montpellier">Montpellier</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Nombre de personnes</label>
+            <select id="pax">
+              <option>1</option><option>2</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7+</option>
+            </select>
+          </div>
         </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="date" required>
+          </div>
+          <div class="field">
+            <label>Service</label>
+            <select id="service">
+              <option value="midi">Midi</option>
+              <option value="soir" selected>Soir</option>
+            </select>
+          </div>
+        </div>
+
         <div class="field">
-          <label>Nombre de personnes</label>
-          <select id="pax">
-            <option>1</option><option>2</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7+</option>
-          </select>
+          <label>Créneau</label>
+          <div class="slots" id="slots"></div>
+          <div id="slotsEmpty" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;">Aucun créneau disponible pour ce choix — essaie une autre date ou un autre service.</div>
+        </div>
+
+        <button type="button" id="toStep2" class="submit">Continuer</button>
+      </div>
+
+      <div id="step2" style="display:none;">
+        <div class="step2-grid">
+          <div class="step2-main">
+            <div class="step2-top">
+              <button type="button" class="back-link" id="backToStep1" aria-label="Retour">←</button>
+              <h3>Contact</h3>
+            </div>
+
+            <label>Civilité</label>
+            <div class="civilite-group">
+              <label class="civilite-opt"><input type="radio" name="civilite" value="Madame"> Madame</label>
+              <label class="civilite-opt"><input type="radio" name="civilite" value="Monsieur"> Monsieur</label>
+              <label class="civilite-opt"><input type="radio" name="civilite" value="Mx"> Mx.</label>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>Prénom</label>
+                <input type="text" id="prenom" required placeholder="Julie">
+              </div>
+              <div class="field">
+                <label>Nom</label>
+                <input type="text" id="nom" required placeholder="Dupont">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>Téléphone</label>
+                <div class="phone-input">
+                  <span class="phone-prefix">🇫🇷 +33</span>
+                  <input type="tel" id="tel" required placeholder="6 12 34 56 78">
+                </div>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <input type="email" id="email" required placeholder="julie.dupont@mail.com">
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Commentaires, préférences ou restrictions alimentaires (facultatif)</label>
+              <input type="text" id="note" placeholder="Optionnel">
+            </div>
+
+            <div class="check-row">
+              <input type="checkbox" id="saveInfo">
+              <label for="saveInfo">Sauvegarder mes informations pour mes prochaines réservations.</label>
+            </div>
+
+            <hr class="sep">
+
+            <div class="check-row required">
+              <input type="checkbox" id="cgu">
+              <label for="cgu">J'accepte les conditions générales d'utilisation du service <span class="req">*</span></label>
+            </div>
+            <div class="field-error" id="cguError">Coche cette case pour valider ta réservation.</div>
+
+            <div class="check-row">
+              <input type="checkbox" id="offersEmail">
+              <label for="offersEmail">Envoie-moi des offres et actualités par email.</label>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" id="offersSms">
+              <label for="offersSms">Envoie-moi des offres et actualités par SMS.</label>
+            </div>
+
+            <button type="submit" class="submit">Réserver</button>
+          </div>
+
+          <div class="step2-summary">
+            <div class="summary-card">
+              <div class="summary-head"><span>Votre réservation</span><a href="#" id="modifierLink">modifier</a></div>
+              <div class="summary-row">🍴 <span id="sumPax"></span></div>
+              <div class="summary-row">📅 <span id="sumDate"></span></div>
+              <div class="summary-row">🕒 <span id="sumHeure"></span></div>
+              <div class="summary-row">📍 <span id="sumResto"></span></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="date" required>
-        </div>
-        <div class="field">
-          <label>Service</label>
-          <select id="service">
-            <option value="midi">Midi</option>
-            <option value="soir" selected>Soir</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Créneau</label>
-        <div class="slots" id="slots">
-          <div class="slot" data-t="19:00">19h00</div>
-          <div class="slot active" data-t="19:30">19h30</div>
-          <div class="slot" data-t="20:00">20h00</div>
-          <div class="slot disabled" data-t="20:30">20h30 (complet)</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Nom</label>
-          <input type="text" id="nom" required placeholder="Dupont">
-        </div>
-        <div class="field">
-          <label>Prénom</label>
-          <input type="text" id="prenom" required placeholder="Julie">
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Téléphone</label>
-          <input type="tel" id="tel" required placeholder="06 12 34 56 78">
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" id="email" required placeholder="julie.dupont@mail.com">
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Demande particulière (allergie, anniversaire...)</label>
-        <input type="text" id="note" placeholder="Optionnel">
-      </div>
-
-      <div class="field" style="display:flex;align-items:flex-start;gap:8px;">
-        <input type="checkbox" id="consent" style="width:auto;margin-top:3px;">
-        <label for="consent" style="margin:0;font-size:12px;color:var(--muted);">J'accepte de recevoir par email les offres et actualités Fricaccia (facultatif — résiliable à tout moment, STOP).</label>
-      </div>
-
-      <button type="submit" class="submit">Confirmer la réservation</button>
     </form>
 
     <div class="confirm" id="confirm">
       <div class="ico">✓</div>
       <h3>Réservation confirmée</h3>
       <p id="confirmDetail"></p>
-      <a href="index.html">Voir dans le backoffice</a>
+      <a href="#" id="calendarLink" class="cal-btn" target="_blank" rel="noopener">+ Ajoute à ton calendrier</a>
+      <p id="cancelHint" class="note" style="margin-top:18px;"></p>
     </div>
   </div>
-
-  <p class="note">Démo interactive — enregistre en local (localStorage), pas encore branché Supabase.</p>
 </main>
 
+<script src="assets/js/supabase-config.js"></script>
 <script>
-  const slots = document.querySelectorAll('.slot:not(.disabled)');
-  slots.forEach(s => s.addEventListener('click', () => {
-    slots.forEach(x => x.classList.remove('active'));
-    s.classList.add('active');
-  }));
-
   document.getElementById('date').valueAsDate = new Date();
+
+  // Horaires réels (Google Business Profile), 7j/7, service continu
+  const HORAIRES = {
+    Montpellier: {
+      lun:['10:30','22:30'], mar:['10:30','22:30'], mer:['10:30','22:30'],
+      jeu:['10:30','23:00'], ven:['10:30','23:00'], sam:['10:30','23:00'], dim:['10:30','23:00']
+    },
+    Perpignan: {
+      lun:['10:30','22:00'], mar:['10:30','22:00'], mer:['10:30','22:00'],
+      jeu:['10:30','22:00'], ven:['10:30','22:00'], sam:['10:30','22:00'], dim:['10:30','22:00']
+    }
+  };
+  const JOURS = ['dim','lun','mar','mer','jeu','ven','sam'];
+  const DELAI_MIN_MIN = 120; // réservation min 2h à l'avance
+  const DERNIERE_COMMANDE_AVANT_FERMETURE_MIN = 30;
+  const INTERVALLE_MIN = 30;
+  const COUPURE_MIDI_SOIR = '15:30'; // avant = midi, après = soir
+
+  function hToMin(h){ const [hh,mm] = h.split(':').map(Number); return hh*60+mm; }
+  function minToH(m){ return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
+
+  function genererCreneaux(resto, dateStr, service){
+    const horaireResto = HORAIRES[resto];
+    if (!horaireResto || !dateStr) return [];
+    const [y,m,d] = dateStr.split('-').map(Number);
+    const dateSel = new Date(y, m-1, d);
+    const jourKey = JOURS[dateSel.getDay()];
+    const plage = horaireResto[jourKey];
+    if (!plage) return []; // fermé ce jour-là
+
+    let debut = hToMin(plage[0]);
+    let fin = hToMin(plage[1]) - DERNIERE_COMMANDE_AVANT_FERMETURE_MIN;
+    const coupure = hToMin(COUPURE_MIDI_SOIR);
+    if (service === 'midi') fin = Math.min(fin, coupure - INTERVALLE_MIN);
+    else debut = Math.max(debut, coupure);
+
+    const maintenant = new Date();
+    const estAujourdhui = dateSel.toDateString() === maintenant.toDateString();
+    const seuilMin = estAujourdhui ? (maintenant.getHours()*60 + maintenant.getMinutes() + DELAI_MIN_MIN) : -1;
+
+    const creneaux = [];
+    for (let t = debut; t <= fin; t += INTERVALLE_MIN) {
+      if (t < seuilMin) continue;
+      creneaux.push(minToH(t));
+    }
+    return creneaux;
+  }
+
+  function rafraichirCreneaux(){
+    const resto = document.getElementById('restaurant').value;
+    const dateStr = document.getElementById('date').value;
+    const service = document.getElementById('service').value;
+    const creneaux = genererCreneaux(resto, dateStr, service);
+    const container = document.getElementById('slots');
+    const vide = document.getElementById('slotsEmpty');
+    container.innerHTML = '';
+
+    if (creneaux.length === 0) {
+      vide.style.display = 'block';
+      document.querySelector('.submit').disabled = true;
+      return;
+    }
+    vide.style.display = 'none';
+    if (!isPaused(resto)) document.querySelector('.submit').disabled = false;
+
+    creneaux.forEach((t, i) => {
+      const el = document.createElement('div');
+      el.className = 'slot' + (i === 0 ? ' active' : '');
+      el.dataset.t = t;
+      el.textContent = t.replace(':', 'h');
+      el.addEventListener('click', () => {
+        container.querySelectorAll('.slot').forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+      });
+      container.appendChild(el);
+    });
+  }
+
+  document.getElementById('restaurant').addEventListener('change', rafraichirCreneaux);
+  document.getElementById('date').addEventListener('change', rafraichirCreneaux);
+  document.getElementById('service').addEventListener('change', rafraichirCreneaux);
 
   const STORE_KEY = 'fricaccia_reservations';
   const LINKS_KEY = 'fricaccia_links';
+
+  // Notif WhatsApp équipe via CallMeBot (test/MVP, pas d'API officielle)
+  // Setup : envoyer "I allow callmebot to send me messages" au +34 644 59 71 65 depuis le num destinataire,
+  // récupérer l'apikey reçue en retour, compléter ci-dessous.
+  const WHATSAPP_NOTIF = {
+    phone: '33665013779',   // num destinataire, format international SANS +
+    apikey: '5511511'
+  };
+
+  function sendWhatsAppNotif(reservation){
+    if (!WHATSAPP_NOTIF.phone || !WHATSAPP_NOTIF.apikey || WHATSAPP_NOTIF.apikey === 'TON_APIKEY_ICI') return;
+    const texte = `Nouvelle réservation Fricaccia\n${reservation.prenom} ${reservation.nom} - ${reservation.pax} pers.\n${reservation.date} à ${reservation.heure}\n${reservation.restaurant}\nTél: ${reservation.tel}`;
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(WHATSAPP_NOTIF.phone)}&text=${encodeURIComponent(texte)}&apikey=${encodeURIComponent(WHATSAPP_NOTIF.apikey)}`;
+    fetch(url, { mode: 'no-cors' }).catch(function(e){ console.warn('Notif WhatsApp échouée', e); });
+  }
+
+  // Email confirmation client via serveur local (jamais la clé Brevo côté navigateur)
+  const EMAIL_CONFIRM_ENDPOINT = 'http://localhost:8788/api/send-confirmation';
+  function sendConfirmationEmail(reservation){
+    if (!reservation.email) return;
+    fetch(EMAIL_CONFIRM_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reservation)
+    }).catch(function(e){ console.warn('Email confirmation échoué (serveur lancé ?)', e); });
+  }
   function loadReservations(){
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ return []; }
   }
@@ -218,39 +401,140 @@
     }
   }
   checkPause();
+  rafraichirCreneaux();
 
-  document.getElementById('bookingForm').addEventListener('submit', function(e){
+  function dateLocaleStr(){
+    const dt = document.getElementById('date').valueAsDate || new Date();
+    // piege TR : jamais toISOString() sur date locale -> construire via getFullYear/getMonth/getDate
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  }
+
+  // Contact sauvegardé (checkbox "sauvegarder mes infos") — préremplissage prochaine visite
+  const CONTACT_KEY = 'fricaccia_contact_saved';
+  function loadSavedContact(){
+    try { return JSON.parse(localStorage.getItem(CONTACT_KEY)); } catch(e){ return null; }
+  }
+  const savedContact = loadSavedContact();
+  if (savedContact) {
+    document.getElementById('prenom').value = savedContact.prenom || '';
+    document.getElementById('nom').value = savedContact.nom || '';
+    document.getElementById('tel').value = savedContact.tel || '';
+    document.getElementById('email').value = savedContact.email || '';
+    document.getElementById('saveInfo').checked = true;
+    if (savedContact.civilite) {
+      const r = document.querySelector(`input[name="civilite"][value="${savedContact.civilite}"]`);
+      if (r) r.checked = true;
+    }
+  }
+
+  function afficherRecap(){
+    const activeSlot = document.querySelector('.slot.active');
+    const pax = document.getElementById('pax').value;
+    document.getElementById('sumPax').textContent = `${pax} personne${pax > 1 ? 's' : ''}`;
+    document.getElementById('sumDate').textContent = dateLocaleStr();
+    document.getElementById('sumHeure').textContent = activeSlot ? activeSlot.dataset.t : '';
+    document.getElementById('sumResto').textContent = `Fricaccia ${document.getElementById('restaurant').value}`;
+  }
+
+  document.getElementById('toStep2').addEventListener('click', function(){
+    if (isPaused(document.getElementById('restaurant').value)) return;
+    if (!document.querySelector('.slot.active')) return;
+    afficherRecap();
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+  });
+
+  function retourStep1(){
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step1').style.display = 'block';
+  }
+  document.getElementById('backToStep1').addEventListener('click', retourStep1);
+  document.getElementById('modifierLink').addEventListener('click', function(e){ e.preventDefault(); retourStep1(); });
+
+  document.getElementById('bookingForm').addEventListener('submit', async function(e){
     e.preventDefault();
+    if (document.getElementById('step2').style.display === 'none') return; // submit ne compte qu'à l'étape 2
     if (isPaused(document.getElementById('restaurant').value)) return;
 
-    const d = document.getElementById('date');
-    // piege TR : jamais toISOString() sur date locale -> construire via getFullYear/getMonth/getDate
-    const dt = d.valueAsDate || new Date();
-    const dateLocale = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const cguOk = document.getElementById('cgu').checked;
+    document.getElementById('cguError').style.display = cguOk ? 'none' : 'block';
+    if (!cguOk) return;
 
     const activeSlot = document.querySelector('.slot.active');
+    const civiliteEl = document.querySelector('input[name="civilite"]:checked');
+    const submitBtn = document.querySelector('#step2 button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Envoi...';
+
     const reservation = {
-      id: 'r_' + Date.now(),
       restaurant: document.getElementById('restaurant').value,
       pax: document.getElementById('pax').value,
-      date: dateLocale,
+      date: dateLocaleStr(),
       service: document.getElementById('service').value,
       heure: activeSlot ? activeSlot.dataset.t : '19:30',
+      civilite: civiliteEl ? civiliteEl.value : null,
       nom: document.getElementById('nom').value,
       prenom: document.getElementById('prenom').value,
       tel: document.getElementById('tel').value,
       email: document.getElementById('email').value,
       note: document.getElementById('note').value,
-      consentement: document.getElementById('consent').checked,
-      statut: 'nouvelle',
-      source: activeLink ? activeLink.source : 'site',
-      linkId: activeLink ? activeLink.id : null,
-      creeLe: new Date().toISOString()
+      offresEmail: document.getElementById('offersEmail').checked,
+      offresSms: document.getElementById('offersSms').checked,
+      source: activeLink ? activeLink.source : 'site'
     };
 
+    const { data: bookingRef, error } = await supabaseClient.rpc('creer_reservation', {
+      p_restaurant_slug: RESTO_SLUGS[reservation.restaurant],
+      p_date: reservation.date,
+      p_heure: reservation.heure,
+      p_pax: parseInt(reservation.pax, 10) || 7,
+      p_prenom: reservation.prenom,
+      p_nom: reservation.nom,
+      p_email: reservation.email,
+      p_tel: reservation.tel,
+      p_note: reservation.note,
+      p_offres_email: reservation.offresEmail,
+      p_offres_sms: reservation.offresSms,
+      p_source: reservation.source
+    });
+
+    if (error) {
+      console.error('Erreur création réservation Supabase', error);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Réserver';
+      let errEl = document.getElementById('submitError');
+      if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.id = 'submitError';
+        errEl.className = 'field-error';
+        errEl.style.display = 'block';
+        submitBtn.insertAdjacentElement('beforebegin', errEl);
+      }
+      errEl.textContent = "Erreur lors de l'enregistrement, réessaie dans un instant.";
+      return;
+    }
+    reservation.bookingRef = bookingRef;
+
+    if (document.getElementById('saveInfo').checked) {
+      localStorage.setItem(CONTACT_KEY, JSON.stringify({
+        civilite: reservation.civilite, prenom: reservation.prenom, nom: reservation.nom,
+        tel: reservation.tel, email: reservation.email
+      }));
+    } else {
+      localStorage.removeItem(CONTACT_KEY);
+    }
+
+    // Miroir localStorage pour le backoffice (pas encore migré sur Supabase)
     const list = loadReservations();
-    list.push(reservation);
+    list.push(Object.assign({ id: reservation.bookingRef, statut: 'nouvelle', creeLe: new Date().toISOString() }, reservation));
     saveReservations(list);
+
+    sendWhatsAppNotif(reservation);
+    sendConfirmationEmail(reservation);
+
+    document.getElementById('calendarLink').href = googleCalendarUrl(reservation);
+    document.getElementById('cancelHint').textContent =
+      `Besoin d'annuler ? Utilise le lien reçu par email, ou ta référence : ${reservation.bookingRef}`;
 
     document.getElementById('bookingForm').style.display = 'none';
     document.getElementById('confirm').style.display = 'block';

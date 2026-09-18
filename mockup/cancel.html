@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fricaccia — Gérer ma réservation</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
+  @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-ExtraBold.woff') format('woff');font-weight:800;font-display:swap;}
+  @font-face{font-family:'Candery';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/Candery-Regular.woff') format('woff');font-weight:400;font-display:swap;}
+
+  :root{
+    --sugo:#C3171F; --char:#262626; --paper:#FFF7EF; --paper2:#FFFFFF;
+    --basil:#4DAA38; --amber:#EBB125; --border:#EAD9C8; --muted:#96866f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Aloevera',-apple-system,sans-serif;background:var(--paper);color:var(--char);}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--char);}
+  .brand .word{font-family:'Candery',cursive;font-size:24px;color:#fff;}
+
+  main{max-width:560px;margin:40px auto;padding:0 20px;}
+  .hero{text-align:center;margin-bottom:24px;}
+  .hero h2{font-size:24px;margin:0 0 6px;font-weight:800;}
+
+  .card{background:var(--paper2);border:1px solid var(--border);border-radius:14px;padding:26px;}
+  .recap{background:var(--paper);border-radius:10px;padding:16px 18px;margin-bottom:20px;font-size:14px;line-height:2;}
+  .recap b{color:var(--sugo);}
+  .statut-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-left:6px;}
+  .statut-annulee{background:#FCE2E3;color:var(--sugo);}
+  .statut-active{background:#E7F3E4;color:var(--basil);}
+
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;}
+  select{width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:10px 12px;border-radius:8px;font-size:14px;font-family:'Aloevera',sans-serif;margin-bottom:16px;}
+
+  button.danger{width:100%;background:var(--char);color:#fff;border:none;padding:14px;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Aloevera',sans-serif;}
+  button.danger:hover{background:#000;}
+  button.danger:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+
+  .msg{text-align:center;padding:30px 0;}
+  .msg.error{color:var(--sugo);}
+  .msg.success .ico{font-size:36px;color:var(--basil);}
+
+  .historique{margin-top:28px;}
+  .historique h4{font-size:14px;margin:0 0 10px;}
+  .histo-row{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .histo-row:last-child{border-bottom:none;}
+
+  .note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;}
+  #loading{text-align:center;padding:40px 0;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="word">Fricaccia</span></div>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Gérer ma réservation</h2>
+  </div>
+
+  <div class="card">
+    <div id="loading">Chargement...</div>
+
+    <div id="notFound" class="msg error" style="display:none;">
+      <p>Réservation introuvable. Vérifie le lien reçu par email, ou contacte directement le restaurant.</p>
+    </div>
+
+    <div id="content" style="display:none;">
+      <div class="recap">
+        <b id="recapResto"></b><br>
+        📅 <span id="recapDate"></span> · 🕒 <span id="recapHeure"></span><br>
+        🍴 <span id="recapPax"></span><br>
+        👤 <span id="recapNom"></span> · <span id="recapEmail"></span>
+        <span id="recapStatut" class="statut-badge"></span>
+      </div>
+
+      <div id="cancelForm">
+        <label>Motif d'annulation</label>
+        <select id="motif">
+          <option>Empêchement personnel</option>
+          <option>Changement de date/heure souhaité</option>
+          <option>Je ne suis pas à l'origine de cette réservation</option>
+          <option>Autre</option>
+        </select>
+        <button class="danger" id="btnAnnuler">Annuler ma réservation</button>
+      </div>
+
+      <div class="historique" id="historique" style="display:none;">
+        <h4>Historique de mes réservations</h4>
+        <div id="histoList"></div>
+      </div>
+    </div>
+
+    <div id="cancelledMsg" class="msg success" style="display:none;">
+      <div class="ico">✓</div>
+      <h3>Réservation annulée</h3>
+      <p class="note">On espère te revoir bientôt !</p>
+    </div>
+  </div>
+
+  <p class="note">Un empêchement ? Tu peux aussi contacter directement le restaurant.</p>
+</main>
+
+<script src="assets/js/supabase-config.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  const email = params.get('email');
+
+  const STATUTS_LABELS = {
+    nouvelle: 'Confirmée', confirmee: 'Confirmée', rappelee: 'Confirmée',
+    en_retard: 'En retard', arrivee: 'Arrivée', installee: 'Installée',
+    commande_prise: 'En cours', terminee: 'Terminée', a_nettoyer: 'Terminée',
+    annulee: 'Annulée', no_show: 'No-show'
+  };
+
+  function afficherErreur(){
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('notFound').style.display = 'block';
+  }
+
+  async function charger(){
+    if (!ref || !email) { afficherErreur(); return; }
+
+    const { data, error } = await supabaseClient.rpc('chercher_reservation', { p_booking_ref: ref, p_email: email });
+    if (error || !data || data.length === 0) { afficherErreur(); return; }
+
+    const r = data[0];
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    document.getElementById('recapResto').textContent = r.restaurant_nom;
+    document.getElementById('recapDate').textContent = r.date_resa;
+    document.getElementById('recapHeure').textContent = r.heure_resa.slice(0,5);
+    document.getElementById('recapPax').textContent = `${r.nb_personnes} personne${r.nb_personnes > 1 ? 's' : ''}`;
+    document.getElementById('recapNom').textContent = `${r.prenom} ${r.nom}`;
+    document.getElementById('recapEmail').textContent = r.email;
+
+    const badge = document.getElementById('recapStatut');
+    badge.textContent = STATUTS_LABELS[r.statut] || r.statut;
+    badge.className = 'statut-badge ' + (r.statut === 'annulee' ? 'statut-annulee' : 'statut-active');
+
+    if (['annulee','terminee','no_show'].includes(r.statut)) {
+      document.getElementById('cancelForm').style.display = 'none';
+    }
+
+    // Historique (même client, preuve = ce lien précis)
+    const { data: histo } = await supabaseClient.rpc('mes_reservations', { p_booking_ref: ref, p_email: email });
+    if (histo && histo.length > 1) {
+      document.getElementById('historique').style.display = 'block';
+      const list = document.getElementById('histoList');
+      histo.forEach(h => {
+        const row = document.createElement('div');
+        row.className = 'histo-row';
+        row.innerHTML = `<span>${h.restaurant_nom} · ${h.date_resa} ${h.heure_resa.slice(0,5)}</span><span>${STATUTS_LABELS[h.statut] || h.statut}</span>`;
+        list.appendChild(row);
+      });
+    }
+
+    document.getElementById('btnAnnuler').addEventListener('click', async function(){
+      this.disabled = true;
+      this.textContent = 'Annulation...';
+      const motif = document.getElementById('motif').value;
+      const { data: ok, error: errAnnul } = await supabaseClient.rpc('annuler_reservation', { p_booking_ref: ref, p_email: email, p_motif: motif });
+      if (errAnnul || !ok) {
+        alert("Erreur lors de l'annulation, réessaie ou contacte le restaurant.");
+        this.disabled = false;
+        this.textContent = 'Annuler ma réservation';
+        return;
+      }
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('cancelledMsg').style.display = 'block';
+    });
+  }
+
+  charger();
+</script>
+
+</body>
+</html>
