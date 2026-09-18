@@ -1,5 +1,8 @@
-# Thème "Huma Admin Dashboard PRO" (ThemeForest, licence UNLICENSED / usage perso uniquement)
-# Non redistribuable sur un repo public — à récupérer localement si besoin.
+# Thème payant plus utilisé (remplacé par mockup/assets/css/sidebar.css, CSS maison)
 mockup/assets/css/app.css
 
 .DS_Store
+
+# Secrets serveur (clé Brevo etc.) — jamais commité
+server/.env
+node_modules/
