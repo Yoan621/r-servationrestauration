@@ -86,6 +86,29 @@ async function marquerAvisEnvoye(ref, horodatage) {
   );
 }
 
+// Lit une réservation par sa référence (= id du document). Renvoie ses champs
+// Firestore typés, ou null si elle n'existe pas. Sert à vérifier côté serveur
+// (anti-doublon) avant de pousser quoi que ce soit en caisse.
+async function lireReservation(ref) {
+  try {
+    const doc = await appel(`/reservations/${encodeURIComponent(ref)}`);
+    return (doc && doc.fields) || null;
+  } catch (e) {
+    // 404 Firestore -> réservation absente : on renvoie null plutôt que throw.
+    if (/Firestore 404/.test(e.message)) return null;
+    throw e;
+  }
+}
+
+// Mémorise l'identifiant de la réservation créée en caisse Zelty, pour pouvoir
+// la retrouver plus tard (réconciliation, annulation manuelle). Best-effort.
+async function enregistrerBookingZelty(ref, zeltyId) {
+  return appel(
+    `/reservations/${encodeURIComponent(ref)}?updateMask.fieldPaths=zeltyBookingId`,
+    { method: 'PATCH', body: JSON.stringify({ fields: { zeltyBookingId: { stringValue: String(zeltyId) } } }) }
+  );
+}
+
 // Aplatit une valeur Firestore typée en valeur JS simple.
 function valeur(v) {
   if (!v || typeof v !== 'object') return v;
@@ -104,4 +127,4 @@ function valeur(v) {
   return undefined;
 }
 
-module.exports = { reservationsDuJour, marquerAvisEnvoye, valeur };
+module.exports = { reservationsDuJour, marquerAvisEnvoye, lireReservation, enregistrerBookingZelty, valeur };

@@ -11,6 +11,8 @@
 // CallMeBot en clair dans la page (donc publics). Elle part maintenant d'ici.
 const { envoyer, htmlConfirmation } = require('./_lib/mail');
 const { notifierEquipe } = require('./_lib/whatsapp');
+const { creerBookingZelty } = require('./_lib/zelty');
+const { lireReservation, enregistrerBookingZelty, valeur } = require('./_lib/firestore');
 
 const EMAIL_VALIDE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -52,6 +54,32 @@ module.exports = async function handler(req, res) {
   }
 
   resultat.whatsapp = await notifierEquipe({ ...r, email });
+
+  // Synchro caisse Zelty : la réservation web est poussée en caisse (booking +
+  // fiche client). Jamais bloquant — la résa est déjà enregistrée dans le CRM,
+  // une panne Zelty ne fait que priver la caisse, pas perdre la réservation.
+  // Anti-doublon : si la résa porte déjà un zeltyBookingId (double appel, refresh),
+  // on ne recrée pas.
+  try {
+    let deja = false;
+    if (r.bookingRef) {
+      const champs = await lireReservation(r.bookingRef);
+      if (champs && valeur(champs.zeltyBookingId)) deja = true;
+    }
+    if (deja) {
+      resultat.zelty = { ok: true, deja: true };
+    } else {
+      const z = await creerBookingZelty({ ...r, email });
+      resultat.zelty = z;
+      if (z.ok && z.bookingId && r.bookingRef) {
+        try { await enregistrerBookingZelty(r.bookingRef, z.bookingId); }
+        catch (e) { console.error('[send-confirmation] zelty id non enregistré', e.message); }
+      }
+    }
+  } catch (e) {
+    console.error('[send-confirmation] zelty', e.message);
+    resultat.zelty = { ok: false, raison: e.message };
+  }
 
   res.status(200).json(resultat);
 };
