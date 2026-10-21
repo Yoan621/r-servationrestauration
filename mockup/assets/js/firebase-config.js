@@ -1,6 +1,6 @@
 // Configuration partagée booking.html / cancel.html / index.html — Firebase Cloud Firestore
 const firebaseConfig = {
-  apiKey: "AIzaSyB_yGHn9abT4S10iwHc-H_A3-WNbq8yP7s",
+  apiKey: "AIzaSyB_yGHn9abT4S10iWhC-H_A3-WNbq8yP7s",
   authDomain: "fricaccia.firebaseapp.com",
   projectId: "fricaccia",
   storageBucket: "fricaccia.firebasestorage.app",
