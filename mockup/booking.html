@@ -384,35 +384,23 @@
 
   const LINKS_KEY = 'fricaccia_links';
 
-  // Notif WhatsApp équipe via CallMeBot (test/MVP, pas d'API officielle)
-  // Setup : envoyer "I allow callmebot to send me messages" au +34 644 59 71 65 depuis le num destinataire,
-  // récupérer l'apikey reçue en retour, compléter ci-dessous.
-  const WHATSAPP_NOTIF = {
-    phone: 'REDACTED_PHONE',   // num destinataire, format international SANS +
-    apikey: 'REDACTED_CALLMEBOT_KEY'
-  };
-
-  function sendWhatsAppNotif(reservation){
-    if (!WHATSAPP_NOTIF.phone || !WHATSAPP_NOTIF.apikey || WHATSAPP_NOTIF.apikey === 'TON_APIKEY_ICI') return;
-    const texte = `Nouvelle réservation Fricaccia\n${reservation.prenom} ${reservation.nom} - ${reservation.pax} pers.\n${reservation.date} à ${reservation.heure}\n${reservation.restaurant}\nTél: ${reservation.tel}`;
-    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(WHATSAPP_NOTIF.phone)}&text=${encodeURIComponent(texte)}&apikey=${encodeURIComponent(WHATSAPP_NOTIF.apikey)}`;
-    fetch(url, { mode: 'no-cors' }).catch(function(e){ console.warn('Notif WhatsApp échouée', e); });
-  }
-
-  // Email confirmation client via serveur local (jamais la clé Brevo côté navigateur)
+  // Notification de la réservation côté serveur : e-mail de confirmation au client
+  // ET notification WhatsApp de l'équipe. Aucune clé (Brevo, CallMeBot) ni numéro
+  // de l'équipe ne transite par le navigateur.
   // En ligne : fonction serverless Vercel (api/send-confirmation.js).
   // En local : le petit serveur Node server/send-email.js, s'il tourne.
   const EN_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
   const EMAIL_CONFIRM_ENDPOINT = EN_LOCAL
     ? 'http://localhost:8788/api/send-confirmation'
     : '/api/send-confirmation';
-  function sendConfirmationEmail(reservation){
-    if (!reservation.email) return;
+  function notifierReservation(reservation){
+    // Pas de garde sur l'e-mail : même sans adresse client, l'équipe doit
+    // recevoir sa notification WhatsApp. Le serveur décide quoi envoyer.
     fetch(EMAIL_CONFIRM_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reservation)
-    }).catch(function(e){ console.warn('Email confirmation échoué (serveur lancé ?)', e); });
+    }).catch(function(e){ console.warn('Notification réservation échouée (serveur lancé ?)', e); });
   }
   function loadLinks(){
     try { return JSON.parse(localStorage.getItem(LINKS_KEY)) || []; } catch(e){ return []; }
@@ -614,8 +602,7 @@
       localStorage.removeItem(CONTACT_KEY);
     }
 
-    sendWhatsAppNotif(reservation);
-    sendConfirmationEmail(reservation);
+    notifierReservation(reservation);
 
     document.getElementById('calendarLink').href = googleCalendarUrl(reservation);
     document.getElementById('cancelHint').textContent =

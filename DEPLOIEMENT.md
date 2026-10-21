@@ -9,6 +9,7 @@ Stack : **Vercel** (pages + fonctions + horloge) et **Firebase Firestore** (donn
 | Connexion de l'équipe | Firebase Auth | ⏳ 1 clic console |
 | E-mail de confirmation | `api/send-confirmation.js` → Brevo | ✅ écrit |
 | E-mail d'avis à J+1 | Vercel Cron → `api/cron-avis.js` → Brevo | ✅ écrit |
+| Notif WhatsApp de l'équipe | `api/_lib/whatsapp.js` → CallMeBot | ✅ écrit, côté serveur |
 
 Plafonds gratuits, pour mémoire : Brevo 300 e-mails/jour, Firestore 50 000 lectures et 20 000 écritures/jour, Vercel Hobby 1 passage de cron par jour.
 
@@ -61,6 +62,31 @@ Dashboard Vercel → projet → Settings → Environment Variables (Production *
 | `FIREBASE_SA_CLIENT_EMAIL` | champ `client_email` du JSON | `server/firebase-sa.json` |
 | `FIREBASE_SA_PRIVATE_KEY` | champ `private_key` du JSON, tel quel (sauts de ligne `\n` acceptés) | `server/firebase-sa.json` |
 | `CRON_SECRET` | une chaîne aléatoire que tu génères | toi |
+| `WHATSAPP_PHONE` | numéro destinataire, international **sans `+`** | `server/.env` |
+| `WHATSAPP_APIKEY` | clé CallMeBot de ce numéro | `server/.env` |
+| `ZELTY_API_KEY` | jeton API Zelty | `server/.env` (même clé que `10_Reporting`) |
+
+### Notif WhatsApp : un destinataire par restaurant
+
+`WHATSAPP_PHONE` / `WHATSAPP_APIKEY` sont le **repli commun** : un seul compte WhatsApp
+pour les deux restaurants (état v1). Dès que les deux comptes existent, ajouter :
+
+| Variable | Restaurant |
+|---|---|
+| `WHATSAPP_PERPIGNAN_PHONE` / `WHATSAPP_PERPIGNAN_APIKEY` | Perpignan |
+| `WHATSAPP_MONTPELLIER_PHONE` / `WHATSAPP_MONTPELLIER_APIKEY` | Montpellier |
+
+Elles prennent le dessus sur le repli, **sans aucune modification de code**. Si la paire
+du restaurant est absente ou incomplète, le repli commun s'applique ; s'il manque aussi,
+la notif est simplement ignorée (la réservation est enregistrée quand même).
+
+Obtenir une clé : envoyer `I allow callmebot to send me messages` au **+34 644 59 71 65**
+depuis le WhatsApp du téléphone destinataire ; la clé arrive en réponse. Une clé est liée
+à un seul numéro.
+
+⚠️ La clé utilisée jusqu'au 2026-10-21 était écrite en clair dans `mockup/booking.html`,
+donc publique sur le dépôt GitHub **et** dans le code source de la page en ligne pendant
+environ un mois. Elle est à considérer comme compromise : à régénérer.
 
 `CRON_SECRET` n'est pas décoratif : dès qu'il existe, Vercel l'envoie en en-tête `Authorization` sur ses appels de cron, et `api/cron-avis.js` refuse tout appel sans lui. Sans ce secret, n'importe qui pourrait déclencher la campagne en boucle depuis l'URL publique.
 

@@ -2,6 +2,9 @@
 // Clé API lue depuis .env (jamais exposée au navigateur). Lancer avec :
 //   node --env-file=.env send-email.js
 const http = require('http');
+// Même module que la fonction Vercel api/send-confirmation.js, pour que le local
+// se comporte comme la production (notif WhatsApp de l'équipe incluse).
+const { notifierEquipe } = require('../api/_lib/whatsapp');
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
@@ -282,10 +285,25 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const reservation = JSON.parse(body);
-        if (!reservation.email) throw new Error('email manquant');
-        const result = await sendConfirmation(reservation);
+        const sortie = { ok: true, email: null, whatsapp: null };
+
+        // E-mail optionnel (réservation prise au comptoir) ; les deux envois sont
+        // indépendants pour qu'un échec ne prive pas l'autre.
+        if (reservation.email) {
+          try {
+            sortie.email = { envoye: true, result: await sendConfirmation(reservation) };
+          } catch (e) {
+            console.error('Erreur envoi email:', e.message);
+            sortie.email = { envoye: false, raison: e.message };
+          }
+        } else {
+          sortie.email = { envoye: false, raison: 'aucune adresse' };
+        }
+
+        sortie.whatsapp = await notifierEquipe(reservation);
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, result }));
+        res.end(JSON.stringify(sortie));
       } catch (e) {
         console.error('Erreur envoi email:', e.message);
         res.writeHead(500, { 'Content-Type': 'application/json' });
