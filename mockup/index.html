@@ -305,8 +305,6 @@
   .btn-action.zelty:hover{background:#0369A1;}
   .btn-action.whatsapp{background:#16A34A;color:#fff;border-color:#16A34A;}
   .btn-action.whatsapp:hover{background:#15803D;}
-  .btn-action.brevo{background:#7C3AED;color:#fff;border-color:#7C3AED;}
-  .btn-action.brevo:hover{background:#6D28D9;}
   .zelty-status-box{font-size:11px;padding:6px 10px;border-radius:6px;background:var(--paper);border:1px solid var(--border);margin-top:4px;}
   .btn-avis-planning{background:#16A34A;color:#fff;border:none;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;}
   .btn-avis-planning:hover{background:#15803D;}
@@ -758,12 +756,10 @@
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Actions Client &amp; Marketing</div>
       <div class="modal-btn-row">
         <a id="modalWhatsAppReview" class="btn-action whatsapp" target="_blank" href="#">⭐ Avis Google (WhatsApp)</a>
-        <button id="modalSmsReview" class="btn-action brevo">✉️ Avis Google (SMS Brevo)</button>
         <button id="modalZeltyCopy" class="btn-action">📋 Copier format Zelty</button>
         <button id="modalZeltyCheck" class="btn-action zelty">🔍 Vérifier sur Zelty</button>
       </div>
       <div id="modalZeltyResult" class="zelty-status-box" style="display:none;"></div>
-      <div id="modalReviewStatus" class="zelty-status-box" style="display:none;background:#F0FDF4;color:#166534;border-color:#BBF7D0;"></div>
     </div>
   </div>
 </div>
@@ -1914,35 +1910,6 @@
     const waText = encodeURIComponent(`Ciao ${c.prenom || ''} ! Merci d'avoir partagé un moment chez Fricaccia ${lastResto} 🍕. Si tu as aimé notre street food italienne, un petit mot ou 5 étoiles sur Google nous aiderait énormément : ${reviewUrl} À très vite ! Nonna`);
     waBtn.href = cleanTel ? `https://api.whatsapp.com/send?phone=${cleanTel}&text=${waText}` : '#';
     waBtn.style.opacity = cleanTel ? '1' : '0.5';
-
-    const smsBtn = document.getElementById('modalSmsReview');
-    const reviewStatus = document.getElementById('modalReviewStatus');
-    reviewStatus.style.display = 'none';
-
-    smsBtn.onclick = async () => {
-      if (!c.tel) { alert('Aucun numéro de téléphone renseigné pour ce client.'); return; }
-      smsBtn.disabled = true;
-      smsBtn.textContent = 'Envoi SMS...';
-      try {
-        const res = await fetch('/api/brevo/sms-avis', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tel: c.tel, prenom: c.prenom, restaurant: lastResto })
-        });
-        const d = await res.json();
-        if (res.ok) {
-          reviewStatus.textContent = `✅ SMS de demande d'avis envoyé via Brevo au ${c.tel} !`;
-          reviewStatus.style.display = 'block';
-        } else {
-          alert('Erreur envoi SMS : ' + (d.error || 'Vérifiez la configuration Brevo'));
-        }
-      } catch (err) {
-        alert('Erreur réseau lors de l\'envoi du SMS');
-      } finally {
-        smsBtn.disabled = false;
-        smsBtn.textContent = '✉️ Avis Google (SMS Brevo)';
-      }
-    };
 
     // Actions Zelty
     const copyZeltyBtn = document.getElementById('modalZeltyCopy');

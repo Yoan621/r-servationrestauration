@@ -81,4 +81,36 @@ async function notifierEquipe(r) {
   }
 }
 
-module.exports = { notifierEquipe, texteNotif, destinataire };
+function texteAnnulation(r) {
+  const lignes = [
+    '❌ Annulation Fricaccia — le client ne vient pas',
+    `${r.prenom || ''} ${r.nom || ''}`.trim() + ` - ${r.pax || '?'} pers.`,
+    `${r.date || '?'} à ${r.heure || '?'}`,
+    String(r.restaurant || '?')
+  ];
+  if (r.tel) lignes.push(`Tél: ${r.tel}`);
+  if (r.bookingRef) lignes.push(`Réf: ${r.bookingRef}`);
+  if (r.motif) lignes.push(`Motif: ${r.motif}`);
+  return lignes.join('\n');
+}
+
+// Même mécanique que notifierEquipe, mais message d'annulation. N'échoue jamais.
+async function notifierAnnulation(r) {
+  const cible = destinataire(r.restaurant);
+  if (!cible) return { envoye: false, raison: 'aucun destinataire configuré' };
+
+  const url = 'https://api.callmebot.com/whatsapp.php'
+    + `?phone=${encodeURIComponent(cible.phone)}`
+    + `&text=${encodeURIComponent(texteAnnulation(r))}`
+    + `&apikey=${encodeURIComponent(cible.apikey)}`;
+
+  try {
+    const rep = await fetch(url, { method: 'GET' });
+    if (!rep.ok) return { envoye: false, raison: `CallMeBot a répondu ${rep.status}`, destinataire: cible.source };
+    return { envoye: true, destinataire: cible.source };
+  } catch (e) {
+    return { envoye: false, raison: `réseau : ${e.message}`, destinataire: cible.source };
+  }
+}
+
+module.exports = { notifierEquipe, notifierAnnulation, texteNotif, texteAnnulation, destinataire };
