@@ -6,3 +6,12 @@ mockup/assets/css/app.css
 # Secrets serveur (clé Brevo etc.) — jamais commité
 server/.env
 node_modules/
+
+# PocketBase : backend abandonné le 2026-10-20 (remplacé par Firestore).
+# Dossier gardé en local comme archive, jamais publié.
+pocketbase/
+
+# Clés de compte de service Firebase + variables destinées à Vercel — jamais commitées
+server/firebase-sa*.json
+server/.env.vercel
+*-sa.json

@@ -4,7 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fricaccia — Réserver une table</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Reserve-a-table markup : aide Google (Search/Maps) à faire remonter ce lien comme bouton
+     "Réserver" une fois le lien GBP renseigné manuellement (Google Business Profile → Infos →
+     Liens → Réservations). Adresses à compléter (non fabriquées ici, pas de source locale). -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Restaurant",
+      "name": "Fricaccia Perpignan",
+      "servesCuisine": "Italian street food",
+      "url": "https://fricaccia.fr/reserver?resto=Perpignan",
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://fricaccia.fr/reserver?resto=Perpignan",
+          "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"]
+        },
+        "result": { "@type": "Reservation", "name": "Réservation de table Fricaccia Perpignan" }
+      }
+    },
+    {
+      "@type": "Restaurant",
+      "name": "Fricaccia Montpellier",
+      "servesCuisine": "Italian street food",
+      "url": "https://fricaccia.fr/reserver?resto=Montpellier",
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://fricaccia.fr/reserver?resto=Montpellier",
+          "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"]
+        },
+        "result": { "@type": "Reservation", "name": "Réservation de table Fricaccia Montpellier" }
+      }
+    }
+  ]
+}
+</script>
 <style>
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
@@ -52,6 +91,10 @@
   .confirm .cal-btn:hover{background:#000;}
 
   .note{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;}
+  .note-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;}
+  .note-chip{background:var(--paper);border:1px solid var(--border);border-radius:16px;padding:5px 11px;font-size:12px;cursor:pointer;user-select:none;transition:all .15s;}
+  .note-chip:hover{border-color:var(--sugo);color:var(--sugo);}
+  .note-chip.active{background:var(--sugo);color:#fff;border-color:var(--sugo);}
 
   /* Étape 2 — style Zenchef : formulaire contact + récap sticky */
   .step2-top{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
@@ -110,9 +153,7 @@
           </div>
           <div class="field">
             <label>Nombre de personnes</label>
-            <select id="pax">
-              <option>1</option><option>2</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7+</option>
-            </select>
+            <select id="pax"></select>
           </div>
         </div>
 
@@ -181,7 +222,15 @@
 
             <div class="field">
               <label>Commentaires, préférences ou restrictions alimentaires (facultatif)</label>
-              <input type="text" id="note" placeholder="Optionnel">
+              <div class="note-tags" id="noteTags">
+                <span class="note-chip" data-tag="Anniversaire 🎂">Anniversaire 🎂</span>
+                <span class="note-chip" data-tag="Poussette / Chaise haute 👶">Poussette 👶</span>
+                <span class="note-chip" data-tag="Option végétarienne 🥗">Végétarien 🥗</span>
+                <span class="note-chip" data-tag="Terrasse si possible ☀️">Terrasse ☀️</span>
+                <span class="note-chip" data-tag="Chien 🐶">Chien 🐶</span>
+                <span class="note-chip" data-tag="Table au calme 🤫">Table calme 🤫</span>
+              </div>
+              <input type="text" id="note" placeholder="Précisez ici vos souhaits ou allergies...">
             </div>
 
             <div class="check-row">
@@ -233,9 +282,24 @@
   </div>
 </main>
 
-<script src="assets/js/supabase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
 <script>
   document.getElementById('date').valueAsDate = new Date();
+
+  // Jusqu'à 25 personnes — au-delà, groupe à gérer par tél (pas de plan de salle 26+)
+  const PAX_MAX = 25;
+  const paxSelect = document.getElementById('pax');
+  for (let n = 1; n <= PAX_MAX; n++) {
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    if (n === 2) opt.selected = true;
+    paxSelect.appendChild(opt);
+  }
+  const optPlus = document.createElement('option');
+  optPlus.value = PAX_MAX + '+'; optPlus.textContent = PAX_MAX + '+ (nous appeler)';
+  paxSelect.appendChild(optPlus);
 
   // Horaires réels (Google Business Profile), 7j/7, service continu
   const HORAIRES = {
@@ -249,9 +313,9 @@
     }
   };
   const JOURS = ['dim','lun','mar','mer','jeu','ven','sam'];
-  const DELAI_MIN_MIN = 120; // réservation min 2h à l'avance
+  const DELAI_MIN_MIN = 0; // plus de délai mini imposé — résa possible jusqu'au dernier moment
   const DERNIERE_COMMANDE_AVANT_FERMETURE_MIN = 30;
-  const INTERVALLE_MIN = 30;
+  const INTERVALLE_MIN = 15;
   const COUPURE_MIDI_SOIR = '15:30'; // avant = midi, après = soir
 
   function hToMin(h){ const [hh,mm] = h.split(':').map(Number); return hh*60+mm; }
@@ -318,7 +382,6 @@
   document.getElementById('date').addEventListener('change', rafraichirCreneaux);
   document.getElementById('service').addEventListener('change', rafraichirCreneaux);
 
-  const STORE_KEY = 'fricaccia_reservations';
   const LINKS_KEY = 'fricaccia_links';
 
   // Notif WhatsApp équipe via CallMeBot (test/MVP, pas d'API officielle)
@@ -337,7 +400,12 @@
   }
 
   // Email confirmation client via serveur local (jamais la clé Brevo côté navigateur)
-  const EMAIL_CONFIRM_ENDPOINT = 'http://localhost:8788/api/send-confirmation';
+  // En ligne : fonction serverless Vercel (api/send-confirmation.js).
+  // En local : le petit serveur Node server/send-email.js, s'il tourne.
+  const EN_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+  const EMAIL_CONFIRM_ENDPOINT = EN_LOCAL
+    ? 'http://localhost:8788/api/send-confirmation'
+    : '/api/send-confirmation';
   function sendConfirmationEmail(reservation){
     if (!reservation.email) return;
     fetch(EMAIL_CONFIRM_ENDPOINT, {
@@ -346,12 +414,6 @@
       body: JSON.stringify(reservation)
     }).catch(function(e){ console.warn('Email confirmation échoué (serveur lancé ?)', e); });
   }
-  function loadReservations(){
-    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ return []; }
-  }
-  function saveReservations(list){
-    localStorage.setItem(STORE_KEY, JSON.stringify(list));
-  }
   function loadLinks(){
     try { return JSON.parse(localStorage.getItem(LINKS_KEY)) || []; } catch(e){ return []; }
   }
@@ -359,38 +421,75 @@
     localStorage.setItem(LINKS_KEY, JSON.stringify(list));
   }
 
-  // Lien tracé (?link=xxx) : préremplit resto + trace la source + compte le clic
+  // Gestion des tags de note rapide
+  document.querySelectorAll('.note-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      const noteInput = document.getElementById('note');
+      const activeTags = Array.from(document.querySelectorAll('.note-chip.active')).map(c => c.dataset.tag);
+      let currentCustom = noteInput.value.split(' | ').filter(part => {
+        return !Array.from(document.querySelectorAll('.note-chip')).some(c => c.dataset.tag === part.trim());
+      }).join(' | ').trim();
+
+      const parts = [...activeTags];
+      if (currentCustom) parts.push(currentCustom);
+      noteInput.value = parts.join(' | ');
+    });
+  });
+
+  // Lien tracé (?link=xxx ou direct ?restaurant=...&source=...)
   let activeLink = null;
-  const linkId = new URLSearchParams(window.location.search).get('link');
+  const urlParams = new URLSearchParams(window.location.search);
+  const linkId = urlParams.get('link');
   if (linkId) {
     const links = loadLinks();
     activeLink = links.find(l => l.id === linkId);
     if (activeLink) {
       activeLink.clics = (activeLink.clics || 0) + 1;
       saveLinks(links);
-      const restoSelect = document.getElementById('restaurant');
-      restoSelect.value = activeLink.restaurant;
-      restoSelect.disabled = true;
-      const banner = document.createElement('div');
-      banner.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;';
-      banner.textContent = `Réservation ${activeLink.restaurant}, via ${activeLink.label || activeLink.source}`;
-      document.querySelector('main').insertBefore(banner, document.querySelector('.card'));
+    }
+  } else {
+    const directResto = urlParams.get('restaurant');
+    const directSource = urlParams.get('source');
+    if (directResto || directSource) {
+      activeLink = {
+        restaurant: directResto || 'Perpignan',
+        source: directSource || 'site',
+        label: directSource || 'Lien direct'
+      };
     }
   }
 
-  function isPaused(resto){
-    try {
-      const p = JSON.parse(localStorage.getItem('fricaccia_pause')) || {};
-      return !!p[resto];
-    } catch(e){ return false; }
+  if (activeLink) {
+    const restoSelect = document.getElementById('restaurant');
+    if (activeLink.restaurant && ['Perpignan', 'Montpellier'].includes(activeLink.restaurant)) {
+      restoSelect.value = activeLink.restaurant;
+      restoSelect.disabled = true;
+    }
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;';
+    banner.textContent = `Réservation ${activeLink.restaurant}, via ${activeLink.label || activeLink.source}`;
+    document.querySelector('main').insertBefore(banner, document.querySelector('.card'));
   }
 
-  document.getElementById('restaurant').addEventListener('change', checkPause);
-  function checkPause(){
+  // Statut pause lu depuis PocketBase (partagé tous appareils, plus fiable que localStorage)
+  let pauseCache = {}; // { slug: bool }
+  function isPaused(resto){
+    return !!pauseCache[RESTO_SLUGS[resto]];
+  }
+
+  async function checkPause(){
     const resto = document.getElementById('restaurant').value;
+    const slug = RESTO_SLUGS[resto];
     const existing = document.getElementById('pauseNotice');
     if (existing) existing.remove();
     document.querySelector('.submit').disabled = false;
+
+    try {
+      const data = await pbApi(`/api/fricaccia/pause/${slug}`);
+      pauseCache[slug] = !!data.en_pause;
+    } catch (e) { console.warn('Statut pause indisponible', e); }
+
     if (isPaused(resto)) {
       const notice = document.createElement('div');
       notice.id = 'pauseNotice';
@@ -400,6 +499,7 @@
       document.querySelector('.submit').disabled = true;
     }
   }
+  document.getElementById('restaurant').addEventListener('change', checkPause);
   checkPause();
   rafraichirCreneaux();
 
@@ -483,23 +583,13 @@
       source: activeLink ? activeLink.source : 'site'
     };
 
-    const { data: bookingRef, error } = await supabaseClient.rpc('creer_reservation', {
-      p_restaurant_slug: RESTO_SLUGS[reservation.restaurant],
-      p_date: reservation.date,
-      p_heure: reservation.heure,
-      p_pax: parseInt(reservation.pax, 10) || 7,
-      p_prenom: reservation.prenom,
-      p_nom: reservation.nom,
-      p_email: reservation.email,
-      p_tel: reservation.tel,
-      p_note: reservation.note,
-      p_offres_email: reservation.offresEmail,
-      p_offres_sms: reservation.offresSms,
-      p_source: reservation.source
-    });
+    let bookingRef = null, error = null;
+    try {
+      bookingRef = (await pbApi('/api/fricaccia/reserver', { method: 'POST', body: reservation })).ref;
+    } catch (e) { error = e; }
 
     if (error) {
-      console.error('Erreur création réservation Supabase', error);
+      console.error('Erreur création réservation', error);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Réserver';
       let errEl = document.getElementById('submitError');
@@ -523,11 +613,6 @@
     } else {
       localStorage.removeItem(CONTACT_KEY);
     }
-
-    // Miroir localStorage pour le backoffice (pas encore migré sur Supabase)
-    const list = loadReservations();
-    list.push(Object.assign({ id: reservation.bookingRef, statut: 'nouvelle', creeLe: new Date().toISOString() }, reservation));
-    saveReservations(list);
 
     sendWhatsAppNotif(reservation);
     sendConfirmationEmail(reservation);

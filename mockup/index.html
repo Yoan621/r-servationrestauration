@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fricaccia — BackOffice réservation</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="assets/css/material-icons.css">
 <link rel="stylesheet" href="assets/css/sidebar.css">
 <style>
@@ -105,6 +104,50 @@
   .sidebar-menu-item.open>.sidebar-menu-button .sidebar-menu-icon{color:var(--amber);}
   .sidebar-menu-item .sidebar-submenu.show{display:block;}
 
+  /* Intégration Zelty : statut + interrupteur activé / éteint */
+  .integ-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0 4px;border-top:1px solid var(--border);}
+  .integ-titre{font-weight:700;font-size:15px;}
+  .integ-statut{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;background:#eee8e0;color:var(--muted);}
+  .integ-statut::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--indispo);}
+  .integ-statut.on{background:rgba(77,170,56,.12);color:var(--basil);}
+  .integ-statut.on::before{background:var(--basil);}
+  .integ-switch{position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;}
+  .integ-switch input{opacity:0;width:0;height:0;}
+  .integ-slider{position:absolute;inset:0;background:#d9cfc3;border-radius:28px;transition:background .2s;}
+  .integ-slider::before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;}
+  .integ-switch input:checked + .integ-slider{background:var(--basil);}
+  .integ-switch input:checked + .integ-slider::before{transform:translateX(22px);}
+  .integ-switch input:focus-visible + .integ-slider{outline:2px solid var(--sugo);outline-offset:2px;}
+
+  /* Design sidebar repris de Vintex CRM : fond noir, items arrondis 10px, actif plein + glow,
+     survol teinté qui glisse de 4px, section Paramètres calée en bas. Accent = rouge Fricaccia. */
+  #appSidebar{background:#000 !important;color:rgba(233,233,233,.6);}
+  #appSidebar .sidebar-brand{border-bottom:1px solid #1A1A1A;margin-bottom:12px;}
+  #appSidebar .sidebar-collapse-btn{border-color:#1A1A1A;color:rgba(233,233,233,.6);transition:all .25s ease-out;}
+  #appSidebar .sidebar-collapse-btn:hover{background:rgba(195,23,31,.1);color:#fff;}
+  #appSidebar .sidebar-heading{color:rgba(233,233,233,.3);padding:14px 22px 8px;}
+  #appSidebar .sidebar-menu{padding:0 12px;}
+  #appSidebar .sidebar-menu-item{margin-bottom:6px;}
+  #appSidebar .sidebar-menu-button{gap:14px;padding:13px 16px;border-radius:10px;color:rgba(233,233,233,.6);font-size:15px;font-weight:500;letter-spacing:-.01em;transition:all .25s ease-out;}
+  #appSidebar .sidebar-menu-button .sidebar-menu-icon{font-size:20px;transition:all .25s ease-out;}
+  #appSidebar .sidebar-menu-button .sidebar-menu-text{transition:transform .25s ease-out;}
+  #appSidebar .sidebar-menu-item:not(.active)>.sidebar-menu-button:not(.disabled):hover{background:rgba(195,23,31,.1);color:#fff;transform:translateX(4px);}
+  #appSidebar .sidebar-menu-item:not(.active)>.sidebar-menu-button:not(.disabled):hover .sidebar-menu-icon{transform:scale(1.05);color:#fff;}
+  #appSidebar .sidebar-menu-item:not(.active)>.sidebar-menu-button:not(.disabled):hover .sidebar-menu-text{transform:translateX(2px);}
+  #appSidebar .sidebar-menu-item.active>.sidebar-menu-button{background:var(--sugo);color:#fff;border-radius:10px;box-shadow:0 4px 16px rgba(195,23,31,.4);}
+  #appSidebar .sidebar-menu-item.active>.sidebar-menu-button .sidebar-menu-icon{color:#fff;}
+  /* Paramètres en bas, séparés par un liseré (comme le bloc Paramètres de Vintex) */
+  #appSidebar .sidebar-heading:last-of-type{margin-top:auto;border-top:1px solid #1A1A1A;padding-top:16px;}
+  @media (min-width:901px){
+    #appSidebar.collapsed .sidebar-menu{padding:0 8px;}
+    #appSidebar.collapsed .sidebar-menu-button{padding:13px 0;transform:none !important;}
+    #appSidebar.collapsed .sidebar-heading{background:#1A1A1A;}
+    /* titres masqués en replié : c'est le menu Paramètres lui-même qui descend en bas */
+    #appSidebar.collapsed .sidebar-heading:last-of-type + .sidebar-menu{margin-top:auto;border-top:1px solid #1A1A1A;padding-top:12px;}
+    #appSidebar.collapsed .sidebar-menu-item:not(.has-submenu):hover > .sidebar-menu-button > .sidebar-menu-text,
+    #appSidebar.collapsed .sidebar-menu-item.has-submenu:hover > .sidebar-submenu{background:#000;border:1px solid #1A1A1A;}
+  }
+
   header{display:flex;align-items:center;gap:16px;padding:14px 28px;background:var(--paper2);border-bottom:1px solid var(--border);}
   .sidebar-mobile-toggle,.sidebar-collapse-btn-top{display:none;background:var(--paper);border:1px solid var(--border);color:var(--char);width:36px;height:36px;border-radius:50%;cursor:pointer;align-items:center;justify-content:center;}
   @media (max-width:900px){ .sidebar-mobile-toggle{display:flex;} }
@@ -121,6 +164,10 @@
   .acc-avatar{width:28px;height:28px;border-radius:50%;background:var(--sugo);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;font-family:'Aloevera',sans-serif;}
   .acc-avatar.sm{width:26px;height:26px;font-size:11px;}
   .acc-avatar.gray{background:var(--muted);font-size:13px;}
+  .acc-avatar .material-icons{font-size:17px;}
+  .acc-avatar.sm .material-icons{font-size:16px;}
+  .bell-btn{display:inline-flex;align-items:center;justify-content:center;}
+  .bell-btn .bell-ico{font-size:20px;color:var(--char);}
 
   .acc-switch-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:220px;background:var(--paper2);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:70;overflow:hidden;padding:6px;}
   .acc-switch-panel.active{display:block;}
@@ -245,8 +292,24 @@
   .client-badges{display:flex;gap:6px;flex-shrink:0;}
   .badge{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:700;}
   .badge.vip{background:#FDE9DA;color:var(--arrive);}
+  .badge.habitue{background:#FEF3C7;color:#D97706;}
+  .badge.nouveau{background:#EBF3FF;color:#2563EB;}
   .badge.optin{background:#EAF5E6;color:var(--basil);}
   .badge.optout{background:#F1ECE4;color:var(--muted);}
+  .badge-note{display:block;background:#FFF3CD;color:#856404;border-radius:4px;padding:2px 6px;font-size:11px;margin-top:3px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .modal-btn-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .btn-action{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;border:1px solid var(--border);font-family:'Aloevera',sans-serif;background:var(--paper);color:var(--char);transition:all .15s;}
+  .btn-action:hover{background:var(--paper2);}
+  .btn-action.zelty{background:#0284C7;color:#fff;border-color:#0284C7;}
+  .btn-action.zelty:hover{background:#0369A1;}
+  .btn-action.whatsapp{background:#16A34A;color:#fff;border-color:#16A34A;}
+  .btn-action.whatsapp:hover{background:#15803D;}
+  .btn-action.brevo{background:#7C3AED;color:#fff;border-color:#7C3AED;}
+  .btn-action.brevo:hover{background:#6D28D9;}
+  .zelty-status-box{font-size:11px;padding:6px 10px;border-radius:6px;background:var(--paper);border:1px solid var(--border);margin-top:4px;}
+  .btn-avis-planning{background:#16A34A;color:#fff;border:none;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;margin-left:4px;}
+  .btn-avis-planning:hover{background:#15803D;}
   .empty{color:var(--muted);font-size:13px;padding:22px 0;text-align:center;}
 
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(38,38,38,.55);align-items:center;justify-content:center;z-index:50;}
@@ -327,6 +390,44 @@
   #authGate .auth-error{color:var(--sugo);font-size:12px;margin:-6px 0 12px;display:none;}
   #logoutBtn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:14px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Aloevera',sans-serif;}
   #logoutBtn:hover{border-color:var(--sugo);color:var(--sugo);}
+  #logoutBtn{display:inline-flex;align-items:center;gap:6px;}
+  #logoutBtn .logout-ico{display:none;font-size:18px;}
+
+  /* Topbar mobile : ligne 1 = menu, compte, cloche, logo, déconnexion (icône) ;
+     ligne 2 = recherche pleine largeur. Cibles tactiles 40px. */
+  @media (max-width:900px){
+    header{flex-wrap:wrap;gap:10px;padding:10px 14px;position:sticky;top:0;z-index:50;}
+    .sidebar-mobile-toggle{width:40px;height:40px;flex-shrink:0;}
+    .topbar-search{order:10;flex:1 1 100%;max-width:none;}
+    .topbar-search input{padding:11px 16px;font-size:16px;} /* 16px : évite le zoom auto iOS au focus */
+    .switch{flex:1;min-width:0;gap:8px;}
+    .acc-switch{min-width:0;margin-right:auto;}
+    .acc-switch-btn{height:40px;max-width:100%;}
+    .acc-switch-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .switch .bell-btn{width:40px;height:40px;padding:0;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .team-chip{width:40px;height:40px;flex-shrink:0;margin-left:0;}
+    #logoutBtn{width:40px;height:40px;padding:0;border-radius:50%;justify-content:center;flex-shrink:0;background:var(--paper);}
+    #logoutBtn .logout-ico{display:inline-block;}
+    #logoutBtn .logout-txt{display:none;}
+    .bell-panel{position:fixed;top:64px;left:12px;right:12px;width:auto;}
+    .acc-switch-panel{left:0;right:auto;}
+  }
+  /* Contenu mobile : rien ne doit dépasser la largeur de l'écran */
+  @media (max-width:900px){
+    main{padding:16px 14px;min-width:0;width:100%;}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px;}
+    .client-row{flex-wrap:wrap;}
+    .grid2{grid-template-columns:minmax(0,1fr);}
+    .grid2>*{min-width:0;}
+    .card-head{flex-wrap:wrap;gap:10px;}
+    .salle{grid-template-columns:repeat(3,1fr);}
+    .link-form,.form-grid{grid-template-columns:1fr !important;}
+    .forecast{overflow-x:auto;}
+    .card{overflow-x:auto;}
+  }
+  @media (max-width:420px){
+    .team-chip{display:none;} /* logo déjà dans la page, place gagnée pour le nom du resto */
+  }
 </style>
 </head>
 <body>
@@ -379,30 +480,23 @@
 
     <div class="sidebar-heading">Paramètres</div>
     <ul class="sidebar-menu">
-      <li class="sidebar-menu-item has-submenu">
-        <a class="sidebar-menu-button" data-toggle="sidebar-collapse-group" href="#settings_menu">
-          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">tune</span>
-          <span class="sidebar-menu-text">Configuration</span>
-          <span class="ml-auto sidebar-menu-toggle-icon"></span>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="plan-salle" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">event_seat</span>
+          <span class="sidebar-menu-text">Plan de salle &amp; tables</span>
         </a>
-        <ul class="sidebar-submenu sm-indent" id="settings_menu">
-          <li class="sidebar-menu-item">
-            <a class="sidebar-menu-button tab-btn" data-view="plan-salle" href="#">
-              <span class="sidebar-menu-text">Plan de salle &amp; tables</span>
-            </a>
-          </li>
-          <li class="sidebar-menu-item">
-            <a class="sidebar-menu-button tab-btn" data-view="acces" href="#">
-              <span class="sidebar-menu-text">Utilisateurs &amp; permissions</span>
-            </a>
-          </li>
-          <li class="sidebar-menu-item">
-            <a class="sidebar-menu-button disabled" href="#">
-              <span class="sidebar-menu-text">Intégration Zelty</span>
-              <span class="sidebar-menu-badge badge badge-accent">Bientôt</span>
-            </a>
-          </li>
-        </ul>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="acces" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">supervisor_account</span>
+          <span class="sidebar-menu-text">Utilisateurs &amp; permissions</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="integration" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">extension</span>
+          <span class="sidebar-menu-text">Intégration Zelty</span>
+        </a>
       </li>
     </ul>
   </aside>
@@ -410,7 +504,7 @@
   <div class="main-area">
 
     <header>
-      <button class="sidebar-mobile-toggle" id="sidebarMobileToggle"><span class="material-icons">menu</span></button>
+      <button class="sidebar-mobile-toggle" id="sidebarMobileToggle" aria-label="Ouvrir le menu"><span class="material-icons">menu</span></button>
 
       <div class="topbar-search">
         <input type="text" id="quickSearch" placeholder="Chercher un client, une réservation, un numéro...">
@@ -437,7 +531,7 @@
             </div>
             <div class="acc-switch-sep"></div>
             <div class="acc-switch-item" data-resto="">
-              <span class="acc-avatar sm gray">🌐</span>
+              <span class="acc-avatar sm gray"><span class="material-icons">public</span></span>
               <span class="acc-switch-item-label">Vue globale</span>
               <span class="material-icons acc-check">check</span>
             </div>
@@ -445,7 +539,7 @@
         </div>
 
         <div class="bell-wrap">
-          <button class="bell-btn" id="bellBtn">🔔<span class="bell-dot" id="bellDot" style="display:none;"></span></button>
+          <button class="bell-btn" id="bellBtn" aria-label="Notifications"><span class="material-icons bell-ico">notifications_none</span><span class="bell-dot" id="bellDot" style="display:none;"></span></button>
           <div class="bell-panel" id="bellPanel">
             <div class="bell-head">Notifications</div>
             <div id="bellList"></div>
@@ -455,7 +549,8 @@
         <div class="team-chip">
           <img src="assets/images/logo-fricaccia.jpg" alt="Fricaccia">
         </div>
-        <button id="logoutBtn" title="Se déconnecter">Déconnexion</button>
+        <span id="staffBadge" class="note" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+        <button id="logoutBtn" title="Se déconnecter" aria-label="Se déconnecter"><span class="material-icons logout-ico">logout</span><span class="logout-txt">Déconnexion</span></button>
       </div>
     </header>
 
@@ -529,11 +624,14 @@
 
   <div class="view" id="view-clients">
     <div class="card">
-      <h2>Fiches clients</h2>
+      <div class="card-head">
+        <h2 style="margin:0;">Fiches clients</h2>
+        <button class="btn-mini" id="exportZeltyBtn" style="background:var(--char);color:#fff;border:none;padding:7px 12px;border-radius:6px;font-size:12px;cursor:pointer;">📥 Exporter format Zelty (CSV)</button>
+      </div>
       <input type="text" class="search" id="clientSearch" placeholder="Rechercher par nom, email ou téléphone...">
       <div id="clientList"></div>
     </div>
-    <p class="note">Fiches générées automatiquement à partir des infos saisies au moment de la réservation (widget site). Ajoute une réservation via le <a href="booking.html" style="color:var(--accent);">widget</a> pour voir apparaître un client ici.</p>
+    <p class="note">Fiches clients synchronisées en temps réel. Données prêtes à être exportées ou vérifiées directement avec la caisse Zelty.</p>
   </div>
 
   <div class="view" id="view-links">
@@ -548,14 +646,19 @@
           </select>
         </div>
         <div class="field">
-          <label>Source</label>
+          <label>Source / Emplacement</label>
           <select id="newLinkSource">
-            <option value="site">Site internet</option>
-            <option value="instagram">Instagram</option>
-            <option value="google">Google / GBP</option>
-            <option value="qr">QR code table</option>
+            <option value="site">Site internet (Général)</option>
+            <option value="instagram_bio">Instagram — Lien Bio</option>
+            <option value="instagram_story">Instagram — Story</option>
+            <option value="tiktok">TikTok</option>
+            <option value="facebook">Facebook</option>
+            <option value="google">Google Business Profile / Fiche</option>
+            <option value="qr_table">QR code table</option>
+            <option value="flyer">Flyer / Menu papier</option>
+            <option value="influenceur">Influenceur / Partenaire</option>
             <option value="whatsapp">WhatsApp</option>
-            <option value="interne">Réservation interne</option>
+            <option value="interne">Réservation interne / Téléphone</option>
           </select>
         </div>
         <div class="field">
@@ -590,6 +693,26 @@
     <p class="note">Change de restaurant en haut (Perpignan / Montpellier) pour gérer son plan de salle — chaque resto a sa propre configuration de tables.</p>
   </div>
 
+  <div class="view" id="view-integration">
+    <div class="card">
+      <div class="card-head">
+        <h2 style="margin:0;">Intégration Zelty</h2>
+        <span class="integ-statut" id="zeltyStatut"></span>
+      </div>
+      <div class="integ-row">
+        <div>
+          <div class="integ-titre">API Zelty</div>
+          <div class="note" style="text-align:left;margin:4px 0 0;" id="zeltyInfo"></div>
+        </div>
+        <label class="integ-switch" title="Activer / éteindre l'API Zelty">
+          <input type="checkbox" id="zeltyToggle">
+          <span class="integ-slider"></span>
+        </label>
+      </div>
+    </div>
+    <p class="note">Interrupteur seulement pour l'instant : la synchro réservations ↔ caisse Zelty (Perpignan 8203, Montpellier 9941) n'est pas encore branchée.</p>
+  </div>
+
   <div class="view" id="view-acces">
     <div class="card">
       <div class="card-head">
@@ -604,7 +727,8 @@
         <tbody id="staffTableBody"></tbody>
       </table>
     </div>
-    <p class="note">Rôles : <b>admin</b> (accès tous restaurants), <b>responsable</b>/<b>salle</b> (accès scopé à un restaurant), <b>lecture</b> (consultation seule).</p>
+    <p class="note">Rôles : <b>admin</b> (accès tous restaurants + gestion des utilisateurs), <b>responsable</b>/<b>salle</b> (accès scopé à un restaurant), <b>lecture</b> (consultation seule).</p>
+    <p class="note">« Retirer » coupe l'accès immédiatement (la fiche staff est supprimée, les règles Firestore refusent alors tout). Le compte Firebase Auth lui-même, s'il doit disparaître complètement, se supprime depuis la console Firebase → Authentication.</p>
   </div>
 
 </main>
@@ -625,10 +749,22 @@
     <dl>
       <dt>Email</dt><dd id="modalEmail">—</dd>
       <dt>Téléphone</dt><dd id="modalTel">—</dd>
+      <dt>Statut fidélité</dt><dd id="modalFidelite">—</dd>
       <dt>Consentement marketing</dt><dd id="modalConsent">—</dd>
       <dt>Historique des réservations</dt>
       <dd><div id="modalHistory"></div></dd>
     </dl>
+    <div class="modal-actions">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">Actions Client &amp; Marketing</div>
+      <div class="modal-btn-row">
+        <a id="modalWhatsAppReview" class="btn-action whatsapp" target="_blank" href="#">⭐ Avis Google (WhatsApp)</a>
+        <button id="modalSmsReview" class="btn-action brevo">✉️ Avis Google (SMS Brevo)</button>
+        <button id="modalZeltyCopy" class="btn-action">📋 Copier format Zelty</button>
+        <button id="modalZeltyCheck" class="btn-action zelty">🔍 Vérifier sur Zelty</button>
+      </div>
+      <div id="modalZeltyResult" class="zelty-status-box" style="display:none;"></div>
+      <div id="modalReviewStatus" class="zelty-status-box" style="display:none;background:#F0FDF4;color:#166534;border-color:#BBF7D0;"></div>
+    </div>
   </div>
 </div>
 
@@ -711,65 +847,161 @@
   </div>
 </div>
 
-<script src="assets/js/supabase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/bo-sync.js"></script>
 <script>
-  // ---- Login gate (Supabase Auth) ----
-  // Comptes créés manuellement côté Supabase Dashboard (Authentication → Add user),
-  // pas d'auto-inscription publique. Voir README pour la procédure.
+  // ---- Login gate (Firebase Auth) ----
+  // Deux niveaux, volontairement distincts :
+  //   1. un compte Firebase Auth (e-mail / mot de passe) ;
+  //   2. une fiche dans la collection Firestore `staff`, créée par un admin.
+  // Sans la fiche staff, le compte est authentifié mais n'a accès à RIEN :
+  // les règles Firestore (firestore.rules) refusent toute lecture ou écriture.
+  // Les comptes se créent depuis la page « Utilisateurs & permissions », pas
+  // par inscription publique.
+  const AUTH_ENABLED = true;
+
+  // Doit rester synchronisé avec isBootstrapAdminEmail() dans firestore.rules :
+  // ces adresses peuvent se déclarer admin elles-mêmes au premier login, sinon
+  // aucun admin ne pourrait exister au départ.
+  const BOOTSTRAP_ADMINS = ['fricacciamarketing@gmail.com'];
+
+  const ROLE_LABELS = { admin: 'Admin', responsable: 'Responsable', salle: 'Salle', lecture: 'Lecture seule' };
   const authGate = document.getElementById('authGate');
   const appShell = document.getElementById('appShell');
+  const loginError = document.getElementById('loginError');
 
-  async function checkSession(){
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) {
-      authGate.style.display = 'none';
-      appShell.style.display = '';
-    } else {
-      authGate.style.display = 'flex';
-      appShell.style.display = 'none';
+  let currentStaff = null;          // { uid, email, role, restaurant_slug }
+  const staffReadyCallbacks = [];
+  function onStaffReady(cb){
+    if (currentStaff) cb(); else staffReadyCallbacks.push(cb);
+  }
+
+  function afficherErreurLogin(msg){
+    loginError.textContent = msg;
+    loginError.style.display = 'block';
+  }
+
+  function montrerGate(){
+    authGate.style.display = 'flex';
+    appShell.style.display = 'none';
+  }
+
+  function montrerApp(){
+    authGate.style.display = 'none';
+    appShell.style.display = '';
+  }
+
+  // Récupère la fiche staff du compte connecté ; la crée si l'adresse fait
+  // partie des admins d'amorçage et qu'aucune fiche n'existe encore.
+  async function chargerFicheStaff(user){
+    const email = (user.email || '').toLowerCase();
+    const doc = await fbDb.collection('staff').doc(user.uid).get();
+    if (doc.exists) return Object.assign({ uid: user.uid }, doc.data());
+
+    if (BOOTSTRAP_ADMINS.includes(email)) {
+      const fiche = {
+        uid: user.uid,
+        email,
+        role: 'admin',
+        restaurant_slug: '',
+        creeLe: new Date().toISOString(),
+        creePar: email
+      };
+      await fbDb.collection('staff').doc(user.uid).set(fiche);
+      return fiche;
     }
+    return null;
+  }
+
+  function appliquerRole(){
+    if (!currentStaff) return;
+    const estAdmin = currentStaff.role === 'admin';
+    const itemAcces = document.querySelector('.tab-btn[data-view="acces"]');
+    if (itemAcces) itemAcces.parentElement.style.display = estAdmin ? '' : 'none';
+    const badge = document.getElementById('staffBadge');
+    if (badge) {
+      badge.textContent = `${currentStaff.email} · ${ROLE_LABELS[currentStaff.role] || currentStaff.role}`;
+    }
+  }
+
+  if (fbAuth) {
+    fbAuth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        currentStaff = null;
+        montrerGate();
+        return;
+      }
+      try {
+        const fiche = await chargerFicheStaff(user);
+        if (!fiche) {
+          await fbAuth.signOut();
+          afficherErreurLogin("Ce compte n'a pas encore d'accès au back-office. Demande à un admin de t'ajouter.");
+          montrerGate();
+          return;
+        }
+        currentStaff = fiche;
+        montrerApp();
+        appliquerRole();
+        while (staffReadyCallbacks.length) staffReadyCallbacks.shift()();
+      } catch (e) {
+        console.error('[auth] Lecture de la fiche staff impossible', e);
+        await fbAuth.signOut();
+        afficherErreurLogin('Accès refusé par la base de données. Réessaie ou contacte un admin.');
+        montrerGate();
+      }
+    });
+  } else {
+    afficherErreurLogin('SDK Firebase Auth non chargé.');
+    montrerGate();
   }
 
   document.getElementById('loginForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const btn = document.getElementById('loginSubmit');
-    const errEl = document.getElementById('loginError');
-    errEl.style.display = 'none';
+    loginError.style.display = 'none';
     btn.disabled = true;
     btn.textContent = 'Connexion...';
-
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email: document.getElementById('loginEmail').value,
-      password: document.getElementById('loginPassword').value
-    });
-
-    btn.disabled = false;
-    btn.textContent = 'Se connecter';
-
-    if (error) {
-      errEl.textContent = 'Identifiants incorrects.';
-      errEl.style.display = 'block';
-      return;
+    try {
+      await fbAuth.signInWithEmailAndPassword(
+        document.getElementById('loginEmail').value.trim(),
+        document.getElementById('loginPassword').value
+      );
+      // La suite est gérée par onAuthStateChanged.
+    } catch (err) {
+      const codes = {
+        'auth/invalid-email': 'Adresse e-mail invalide.',
+        'auth/user-disabled': 'Ce compte est désactivé.',
+        'auth/user-not-found': 'Identifiants incorrects.',
+        'auth/wrong-password': 'Identifiants incorrects.',
+        'auth/invalid-credential': 'Identifiants incorrects.',
+        'auth/too-many-requests': 'Trop de tentatives. Réessaie dans quelques minutes.',
+        'auth/configuration-not-found': "L'authentification e-mail n'est pas encore activée sur le projet Firebase."
+      };
+      afficherErreurLogin(codes[err.code] || ('Erreur de connexion : ' + (err.code || err.message)));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
     }
-    checkSession();
   });
 
   document.getElementById('logoutBtn').addEventListener('click', async function(){
-    await supabaseClient.auth.signOut();
-    checkSession();
+    if (!fbAuth) return;
+    currentStaff = null;
+    await fbAuth.signOut();
   });
 
-  checkSession();
-  supabaseClient.auth.onAuthStateChange(() => checkSession());
-
   // ---- Gestion des accès staff (admin uniquement) ----
-  const ADMIN_API_BASE = 'http://localhost:8788/api/admin/staff';
-  const ROLE_LABELS = { admin: 'Admin', responsable: 'Responsable', salle: 'Salle', lecture: 'Lecture seule' };
-  let staffEditId = null; // null = mode création, sinon id en édition
+  // Pas de serveur : la création d'un compte passe par une deuxième instance
+  // Firebase (app secondaire), ce qui évite de déconnecter l'admin en cours.
+  let staffEditId = null; // null = création, sinon uid en cours d'édition
 
-  async function accessToken(){
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    return session ? session.access_token : null;
+  function appStaffSecondaire(){
+    const nom = 'staff-admin';
+    const existante = (firebase.apps || []).find(a => a.name === nom);
+    return existante || firebase.initializeApp(firebaseConfig, nom);
   }
 
   function toggleStaffModalFields(){
@@ -783,36 +1015,47 @@
     const tbody = document.getElementById('staffTableBody');
     const errEl = document.getElementById('accesError');
     errEl.style.display = 'none';
+
+    if (!currentStaff || currentStaff.role !== 'admin') {
+      tbody.innerHTML = '<tr><td colspan="4" class="note">Réservé aux admins.</td></tr>';
+      return;
+    }
+
     tbody.innerHTML = '<tr><td colspan="4" class="note">Chargement...</td></tr>';
-    const token = await accessToken();
     try {
-      const res = await fetch(ADMIN_API_BASE, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur de chargement');
+      const snap = await fbDb.collection('staff').get();
+      const staff = [];
+      snap.forEach(d => staff.push(Object.assign({ uid: d.id }, d.data())));
+      staff.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+
       tbody.innerHTML = '';
-      data.staff.forEach(s => {
+      staff.forEach(s => {
         const tr = document.createElement('tr');
+        const resto = s.role === 'admin' ? 'Tous' : (s.restaurant_slug ? (s.restaurant_slug === 'perpignan' ? 'Perpignan' : 'Montpellier') : '—');
+        const estMoi = s.uid === currentStaff.uid;
         tr.innerHTML = `
-          <td>${s.email}</td>
-          <td>${s.role ? `<span class="staff-role-badge ${s.role}">${ROLE_LABELS[s.role] || s.role}</span>` : '<span class="note">Aucun rôle</span>'}</td>
-          <td>${s.restaurant || (s.role === 'admin' ? 'Tous' : '—')}</td>
+          <td>${s.email || '—'}${estMoi ? ' <span class="note">(toi)</span>' : ''}</td>
+          <td><span class="staff-role-badge ${s.role}">${ROLE_LABELS[s.role] || s.role}</span></td>
+          <td>${resto}</td>
           <td style="text-align:right;">
-            <button class="staff-edit" data-id="${s.id}" data-email="${s.email}" data-role="${s.role || ''}">Modifier</button>
-            <button class="staff-delete" data-id="${s.id}" data-email="${s.email}">Retirer</button>
+            <button class="staff-edit" data-uid="${s.uid}" data-email="${s.email || ''}" data-role="${s.role || ''}" data-resto="${s.restaurant_slug || ''}">Modifier</button>
+            ${estMoi ? '' : `<button class="staff-delete" data-uid="${s.uid}">Retirer</button>`}
           </td>`;
         tbody.appendChild(tr);
       });
-      if (data.staff.length === 0) tbody.innerHTML = '<tr><td colspan="4" class="note">Aucun utilisateur.</td></tr>';
+      if (staff.length === 0) tbody.innerHTML = '<tr><td colspan="4" class="note">Aucun utilisateur.</td></tr>';
 
       tbody.querySelectorAll('.staff-edit').forEach(btn => btn.addEventListener('click', () => {
-        staffEditId = btn.dataset.id;
+        staffEditId = btn.dataset.uid;
         document.getElementById('stEmail').value = btn.dataset.email;
         document.getElementById('stPassword').value = '';
         document.getElementById('stRole').value = btn.dataset.role || 'responsable';
+        document.getElementById('stResto').value = btn.dataset.resto || 'perpignan';
         toggleStaffModalFields();
         document.getElementById('staffModalError').style.display = 'none';
         document.getElementById('staffModal').classList.add('active');
       }));
+
       tbody.querySelectorAll('.staff-delete').forEach(btn => btn.addEventListener('click', async function(){
         if (!this.classList.contains('confirming')) {
           this.classList.add('confirming');
@@ -822,12 +1065,18 @@
         }
         this.disabled = true;
         this.textContent = '...';
-        const t = await accessToken();
-        const r = await fetch(`${ADMIN_API_BASE}?user_id=${btn.dataset.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${t}` } });
-        if (r.ok) { renderAcces(); } else { this.disabled = false; this.textContent = 'Erreur'; }
+        try {
+          await fbDb.collection('staff').doc(btn.dataset.uid).delete();
+          renderAcces();
+        } catch (e) {
+          this.disabled = false;
+          this.textContent = 'Erreur';
+          errEl.textContent = "Suppression refusée : " + (e.message || e.code);
+          errEl.style.display = 'block';
+        }
       }));
     } catch (e) {
-      errEl.textContent = e.message;
+      errEl.textContent = 'Chargement impossible : ' + (e.message || e.code);
       errEl.style.display = 'block';
       tbody.innerHTML = '';
     }
@@ -838,6 +1087,7 @@
     document.getElementById('stEmail').value = '';
     document.getElementById('stPassword').value = '';
     document.getElementById('stRole').value = 'responsable';
+    document.getElementById('stResto').value = 'perpignan';
     toggleStaffModalFields();
     document.getElementById('staffModalError').style.display = 'none';
     document.getElementById('staffModal').classList.add('active');
@@ -846,36 +1096,47 @@
 
   document.getElementById('staffSubmit').addEventListener('click', async () => {
     const errEl = document.getElementById('staffModalError');
+    const btn = document.getElementById('staffSubmit');
     errEl.style.display = 'none';
-    const email = document.getElementById('stEmail').value.trim();
+    const email = document.getElementById('stEmail').value.trim().toLowerCase();
     const role = document.getElementById('stRole').value;
-    const restaurant_slug = document.getElementById('stResto').value;
-    const token = await accessToken();
+    const restaurant_slug = role === 'admin' ? '' : document.getElementById('stResto').value;
 
+    btn.disabled = true;
+    const libelle = btn.textContent;
+    btn.textContent = 'Enregistrement...';
     try {
-      let res;
       if (staffEditId) {
-        res = await fetch(ADMIN_API_BASE, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ user_id: staffEditId, role, restaurant_slug })
-        });
+        await fbDb.collection('staff').doc(staffEditId).update({ role, restaurant_slug });
       } else {
         const password = document.getElementById('stPassword').value;
-        if (!email || !password) { errEl.textContent = 'Email et mot de passe requis.'; errEl.style.display = 'block'; return; }
-        res = await fetch(ADMIN_API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ email, password, role, restaurant_slug })
+        if (!email || !password) throw new Error('Email et mot de passe requis.');
+        if (password.length < 8) throw new Error('Mot de passe : 8 caractères minimum.');
+
+        const app2 = appStaffSecondaire();
+        const cred = await app2.auth().createUserWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+        await app2.auth().signOut();
+        await fbDb.collection('staff').doc(uid).set({
+          uid, email, role, restaurant_slug,
+          creeLe: new Date().toISOString(),
+          creePar: currentStaff ? currentStaff.email : ''
         });
       }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur');
       document.getElementById('staffModal').classList.remove('active');
       renderAcces();
     } catch (e) {
-      errEl.textContent = e.message;
+      const codes = {
+        'auth/email-already-in-use': 'Un compte existe déjà avec cette adresse.',
+        'auth/weak-password': 'Mot de passe trop faible (8 caractères minimum).',
+        'auth/invalid-email': 'Adresse e-mail invalide.',
+        'auth/operation-not-allowed': "L'authentification e-mail n'est pas activée sur le projet Firebase."
+      };
+      errEl.textContent = codes[e.code] || e.message || String(e);
       errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = libelle;
     }
   });
 
@@ -887,7 +1148,10 @@
   function loadReservations(){
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e){ return []; }
   }
-  function saveReservations(list){ localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+  function saveReservations(list){
+    boSync.pushReservations(loadReservations(), list);
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  }
 
   // Config plan de salle — structure fixe (setup restaurant, pas donnée client fictive)
   function loadTablesConfig(){
@@ -903,7 +1167,7 @@
   }
 
   function loadWaitlist(){ try { return JSON.parse(localStorage.getItem(WAIT_KEY)) || []; } catch(e){ return []; } }
-  function saveWaitlist(l){ localStorage.setItem(WAIT_KEY, JSON.stringify(l)); }
+  function saveWaitlist(l){ localStorage.setItem(WAIT_KEY, JSON.stringify(l)); boSync.pushReglage(WAIT_KEY, l); }
 
   function loadPauses(){ try { return JSON.parse(localStorage.getItem(PAUSE_KEY)) || {}; } catch(e){ return {}; } }
   function savePauses(p){ localStorage.setItem(PAUSE_KEY, JSON.stringify(p)); }
@@ -998,7 +1262,10 @@
         const isRetard = ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r);
         return `<tr data-id="${r.id}">
           <td>${r.heure}${isRetard ? ' <span class="retard-badge">⚠</span>' : ''}</td>
-          <td>${r.prenom||''} ${r.nom||''}</td>
+          <td>
+            <div style="font-weight:700;">${r.prenom||''} ${r.nom||''}</div>
+            ${r.note ? `<div class="badge-note" title="${r.note}">📝 ${r.note}</div>` : ''}
+          </td>
           <td>${r.pax}</td>
           <td>
             <select class="pax-select table-assign">
@@ -1010,6 +1277,7 @@
           <td class="actions">
             ${r.statut !== 'annulee' && r.statut !== 'terminee' ? `<button class="advance-btn">${STATUT_LABELS[nextStatut(r.statut)] || 'Avancer'}</button>` : ''}
             ${!['annulee','no_show','terminee'].includes(r.statut) ? '<button class="noshow-btn">No-show</button>' : ''}
+            ${['arrivee','installee','commande_prise','terminee'].includes(r.statut) ? `<button class="btn-avis-planning" title="Envoyer demande d'avis Google">⭐ Avis</button>` : ''}
           </td>
         </tr>`;
       }).join('')}
@@ -1021,6 +1289,13 @@
       if (advBtn) advBtn.addEventListener('click', () => updateReservation(id, r => r.statut = nextStatut(r.statut)));
       const noBtn = row.querySelector('.noshow-btn');
       if (noBtn) noBtn.addEventListener('click', () => updateReservation(id, r => r.statut = 'no_show'));
+      const avisBtn = row.querySelector('.btn-avis-planning');
+      if (avisBtn) {
+        avisBtn.addEventListener('click', () => {
+          const r = list.find(x => String(x.id) === String(id));
+          if (r) openReviewFromReservation(r);
+        });
+      }
       row.querySelector('.table-assign').addEventListener('change', (e) => updateReservation(id, r => r.tableNum = e.target.value || null));
     });
   }
@@ -1044,11 +1319,26 @@
     return loadTablesConfig()[resto] || [];
   }
 
-  function saveTablesConfig(cfg){ localStorage.setItem(TABLES_KEY, JSON.stringify(cfg)); }
+  function saveTablesConfig(cfg){ localStorage.setItem(TABLES_KEY, JSON.stringify(cfg)); boSync.pushReglage(TABLES_KEY, cfg); }
 
   const PLAN_META_KEY = 'fricaccia_tables_meta';
   function loadPlanMeta(){ try { return JSON.parse(localStorage.getItem(PLAN_META_KEY)) || {}; } catch(e){ return {}; } }
-  function savePlanMeta(m){ localStorage.setItem(PLAN_META_KEY, JSON.stringify(m)); }
+  function savePlanMeta(m){ localStorage.setItem(PLAN_META_KEY, JSON.stringify(m)); boSync.pushReglage(PLAN_META_KEY, m); }
+
+  // Intégration Zelty : simple interrupteur activé / éteint, partagé via PocketBase (reglages)
+  const INTEG_KEY = 'fricaccia_integrations';
+  function loadIntegrations(){ try { return JSON.parse(localStorage.getItem(INTEG_KEY)) || {}; } catch(e){ return {}; } }
+  function saveIntegrations(v){ localStorage.setItem(INTEG_KEY, JSON.stringify(v)); boSync.pushReglage(INTEG_KEY, v); }
+  function renderIntegration(){
+    const z = loadIntegrations().zelty || {};
+    const statut = document.getElementById('zeltyStatut');
+    statut.textContent = z.actif ? 'Activée' : 'Éteinte';
+    statut.classList.toggle('on', !!z.actif);
+    document.getElementById('zeltyToggle').checked = !!z.actif;
+    document.getElementById('zeltyInfo').textContent = z.modifieLe
+      ? (z.actif ? 'Activée' : 'Éteinte') + ' le ' + new Date(z.modifieLe).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' })
+      : 'Jamais activée.';
+  }
 
   // Parse "nom,capacité" (une table par ligne, virgule ou point-virgule ou tabulation)
   function parsePlanText(text){
@@ -1266,16 +1556,17 @@
     renderAgenda();
     renderRetards();
     renderBell();
+    renderIntegration();
   }
 
   // Switch de compte (façon Instagram : avatar + menu déroulant des comptes)
   const ACC_LABELS = { Perpignan:'Perpignan', Montpellier:'Montpellier', '':'Vue globale' };
-  const ACC_AVATARS = { Perpignan:'P', Montpellier:'M', '':'🌐' };
+  const ACC_AVATARS = { Perpignan:'P', Montpellier:'M', '':'<span class="material-icons">public</span>' };
 
   function renderAccountSwitch(){
     document.getElementById('accSwitchLabel').textContent = ACC_LABELS[currentResto] ?? currentResto;
     const av = document.getElementById('accAvatar');
-    av.textContent = ACC_AVATARS[currentResto] ?? '?';
+    av.innerHTML = ACC_AVATARS[currentResto] ?? '?'; // valeurs fixes ci-dessus, pas de saisie utilisateur
     av.classList.toggle('gray', currentResto === '');
     document.querySelectorAll('.acc-switch-item').forEach(item => {
       item.classList.toggle('current', item.dataset.resto === currentResto);
@@ -1299,12 +1590,21 @@
   });
   renderAccountSwitch();
 
-  // Pause réservations (par restaurant)
-  document.getElementById('pauseToggle').addEventListener('change', (e) => {
+  // Pause réservations (par restaurant) — écrit dans PocketBase (restaurants.en_pause),
+  // partagé tous appareils + bloque le widget public côté serveur
+  document.getElementById('pauseToggle').addEventListener('change', async (e) => {
     if (!currentResto) return;
+    const checked = e.target.checked;
+    try {
+      await boSync.setPause(currentResto, checked);
+    } catch (err) {
+      console.error('Erreur bascule pause', err);
+      e.target.checked = !checked;
+      return;
+    }
     const p = loadPauses();
-    p[currentResto] = e.target.checked;
-    savePauses(p);
+    p[currentResto] = checked;
+    savePauses(p); // miroir local pour affichage immédiat (notifs, badges)
   });
 
   // Nouvelle réservation manuelle
@@ -1517,6 +1817,38 @@
     return Object.values(map);
   }
 
+  function clientFidelite(count){
+    if (count >= 5) return { label: 'VIP 👑', cls: 'vip' };
+    if (count >= 2) return { label: `Habitué (${count}) ⭐`, cls: 'habitue' };
+    return { label: 'Nouveau 🆕', cls: 'nouveau' };
+  }
+
+  function getReviewUrl(restaurant){
+    return (restaurant || '').toLowerCase().includes('montpellier')
+      ? 'https://g.page/r/Cd1Ia0YpCNfyEAE/review'
+      : 'https://g.page/r/CbTiWhN3LrtrEAE/review';
+  }
+
+  function formatPhoneIntl(tel){
+    if (!tel) return '';
+    const clean = tel.replace(/\D/g, '');
+    if (clean.startsWith('0') && clean.length === 10) return '33' + clean.slice(1);
+    if (clean.startsWith('33')) return clean;
+    return clean;
+  }
+
+  function openReviewFromReservation(r){
+    const cleanTel = formatPhoneIntl(r.tel);
+    const reviewUrl = getReviewUrl(r.restaurant);
+    const msg = encodeURIComponent(`Ciao ${r.prenom || ''} ! Merci d'avoir partagé un moment chez Fricaccia ${r.restaurant} 🍕. Si tu as aimé notre cuisine et nos spécialités, un petit mot ou 5 étoiles sur Google nous ferait chaud au cœur : ${reviewUrl} À très vite ! Nonna`);
+    if (cleanTel) {
+      window.open(`https://api.whatsapp.com/send?phone=${cleanTel}&text=${msg}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(`Ciao ${r.prenom || ''} ! Merci d'avoir mangé chez Fricaccia ${r.restaurant}. Ton avis compte pour nous : ${reviewUrl}`);
+      alert('Message copié dans le presse-papier !');
+    }
+  }
+
   function renderClients(filter){
     const listEl = document.getElementById('clientList');
     let clients = buildClients();
@@ -1533,7 +1865,9 @@
       listEl.innerHTML = '<div class="empty">Aucun client encore — réserve via le widget pour en créer un.</div>';
       return;
     }
-    listEl.innerHTML = clients.map((c, i) => `
+    listEl.innerHTML = clients.map((c, i) => {
+      const fid = clientFidelite(c.historique.length);
+      return `
       <div class="client-row" data-idx="${i}">
         <div class="avatar">${initials(c.prenom, c.nom)}</div>
         <div class="client-info">
@@ -1541,10 +1875,12 @@
           <div class="meta">${c.email || '—'} · ${c.tel || '—'} · ${c.historique.length} résa(s)</div>
         </div>
         <div class="client-badges">
+          <span class="badge ${fid.cls}">${fid.label}</span>
           ${c.consentement ? '<span class="badge optin">Opt-in</span>' : '<span class="badge optout">Sans consentement</span>'}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     listEl.querySelectorAll('.client-row').forEach(row => {
       row.addEventListener('click', () => openClientModal(clients[row.dataset.idx]));
@@ -1552,13 +1888,19 @@
   }
 
   function openClientModal(c){
+    const fid = clientFidelite(c.historique.length);
+    const lastResto = (c.historique[0] && c.historique[0].restaurant) || currentResto || 'Perpignan';
+    const cleanTel = formatPhoneIntl(c.tel);
+    const reviewUrl = getReviewUrl(lastResto);
+
     document.getElementById('modalAvatar').textContent = initials(c.prenom, c.nom);
     document.getElementById('modalName').textContent = `${c.prenom || ''} ${c.nom || ''}`;
     document.getElementById('modalSub').textContent = `${c.historique.length} réservation(s)`;
     document.getElementById('modalEmail').textContent = c.email || '—';
     document.getElementById('modalTel').textContent = c.tel || '—';
+    document.getElementById('modalFidelite').innerHTML = `<span class="badge ${fid.cls}">${fid.label}</span>`;
     document.getElementById('modalConsent').innerHTML = c.consentement
-      ? '<span class="badge optin">Opt-in — emails autorisés</span>'
+      ? '<span class="badge optin">Opt-in — contact marketing autorisé</span>'
       : '<span class="badge optout">Aucun consentement — ne pas démarcher</span>';
     document.getElementById('modalHistory').innerHTML = c.historique.map(r => `
       <div class="hist-item">
@@ -1566,8 +1908,137 @@
         <span style="color:var(--muted);">${r.statut}</span>
       </div>
     `).join('');
+
+    // Actions Marketing & Avis Google
+    const waBtn = document.getElementById('modalWhatsAppReview');
+    const waText = encodeURIComponent(`Ciao ${c.prenom || ''} ! Merci d'avoir partagé un moment chez Fricaccia ${lastResto} 🍕. Si tu as aimé notre street food italienne, un petit mot ou 5 étoiles sur Google nous aiderait énormément : ${reviewUrl} À très vite ! Nonna`);
+    waBtn.href = cleanTel ? `https://api.whatsapp.com/send?phone=${cleanTel}&text=${waText}` : '#';
+    waBtn.style.opacity = cleanTel ? '1' : '0.5';
+
+    const smsBtn = document.getElementById('modalSmsReview');
+    const reviewStatus = document.getElementById('modalReviewStatus');
+    reviewStatus.style.display = 'none';
+
+    smsBtn.onclick = async () => {
+      if (!c.tel) { alert('Aucun numéro de téléphone renseigné pour ce client.'); return; }
+      smsBtn.disabled = true;
+      smsBtn.textContent = 'Envoi SMS...';
+      try {
+        const res = await fetch('/api/brevo/sms-avis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tel: c.tel, prenom: c.prenom, restaurant: lastResto })
+        });
+        const d = await res.json();
+        if (res.ok) {
+          reviewStatus.textContent = `✅ SMS de demande d'avis envoyé via Brevo au ${c.tel} !`;
+          reviewStatus.style.display = 'block';
+        } else {
+          alert('Erreur envoi SMS : ' + (d.error || 'Vérifiez la configuration Brevo'));
+        }
+      } catch (err) {
+        alert('Erreur réseau lors de l\'envoi du SMS');
+      } finally {
+        smsBtn.disabled = false;
+        smsBtn.textContent = '✉️ Avis Google (SMS Brevo)';
+      }
+    };
+
+    // Actions Zelty
+    const copyZeltyBtn = document.getElementById('modalZeltyCopy');
+    copyZeltyBtn.onclick = () => {
+      const line = `${c.nom || ''};${c.prenom || ''};${c.tel || ''};${c.email || ''};${lastResto}`;
+      navigator.clipboard.writeText(line).then(() => {
+        copyZeltyBtn.textContent = 'Copié ✓';
+        setTimeout(() => { copyZeltyBtn.textContent = '📋 Copier format Zelty'; }, 1500);
+      });
+    };
+
+    const checkZeltyBtn = document.getElementById('modalZeltyCheck');
+    const zeltyResult = document.getElementById('modalZeltyResult');
+    zeltyResult.style.display = 'none';
+
+    checkZeltyBtn.onclick = async () => {
+      checkZeltyBtn.disabled = true;
+      checkZeltyBtn.textContent = 'Vérification...';
+      try {
+        const query = encodeURIComponent(c.tel || c.email || '');
+        const res = await fetch(`/api/zelty/check?phone=${query}&email=${encodeURIComponent(c.email||'')}`);
+        const data = await res.json();
+        zeltyResult.style.display = 'block';
+        if (data.exists && data.customers && data.customers.length > 0) {
+          const zc = data.customers[0];
+          zeltyResult.style.background = '#ECFDF5';
+          zeltyResult.style.color = '#065F46';
+          zeltyResult.style.borderColor = '#A7F3D0';
+          zeltyResult.innerHTML = `✅ <b>Client déjà dans Zelty</b> : ${zc.fname||''} ${zc.name||''} (${zc.nb_orders||0} commandes caisse, CA: ${zc.turnover||0}€)`;
+        } else {
+          zeltyResult.style.background = '#EFF6FF';
+          zeltyResult.style.color = '#1E40AF';
+          zeltyResult.style.borderColor = '#BFDBFE';
+          zeltyResult.innerHTML = `ℹ️ <b>Non présent dans Zelty</b>. <button id="btnCreateInZelty" style="margin-left:8px;padding:3px 8px;font-size:11px;background:#0284C7;color:#fff;border:none;border-radius:4px;cursor:pointer;">+ Créer dans Zelty</button>`;
+          const createBtn = document.getElementById('btnCreateInZelty');
+          if (createBtn) {
+            createBtn.onclick = async () => {
+              createBtn.disabled = true;
+              createBtn.textContent = 'Création...';
+              const cRes = await fetch('/api/zelty/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nom: c.nom, prenom: c.prenom, tel: c.tel, email: c.email, consentement: c.consentement })
+              });
+              if (cRes.ok) {
+                zeltyResult.innerHTML = `✅ Client créé avec succès dans Zelty !`;
+              } else {
+                alert('Erreur lors de la création dans Zelty');
+                createBtn.disabled = false;
+                createBtn.textContent = '+ Créer dans Zelty';
+              }
+            };
+          }
+        }
+      } catch (err) {
+        zeltyResult.style.display = 'block';
+        zeltyResult.textContent = 'Erreur lors de la vérification Zelty.';
+      } finally {
+        checkZeltyBtn.disabled = false;
+        checkZeltyBtn.textContent = '🔍 Vérifier sur Zelty';
+      }
+    };
+
     document.getElementById('clientModal').classList.add('active');
   }
+
+  // Export CSV format Zelty
+  document.getElementById('exportZeltyBtn').addEventListener('click', () => {
+    const clients = buildClients();
+    if (clients.length === 0) {
+      alert('Aucun client à exporter pour le moment.');
+      return;
+    }
+    const headers = ['Nom', 'Prenom', 'Telephone', 'Email', 'Optin_SMS', 'Optin_Mail', 'Nb_Reservations', 'Dernier_Restaurant'];
+    const rows = clients.map(c => {
+      const lastR = (c.historique[0] && c.historique[0].restaurant) || '';
+      return [
+        `"${(c.nom || '').replace(/"/g, '""')}"`,
+        `"${(c.prenom || '').replace(/"/g, '""')}"`,
+        `"${(c.tel || '').replace(/"/g, '""')}"`,
+        `"${(c.email || '').replace(/"/g, '""')}"`,
+        c.consentement ? '1' : '0',
+        c.consentement ? '1' : '0',
+        c.historique.length,
+        `"${lastR}"`
+      ].join(';');
+    });
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fricaccia_clients_zelty_${todayLocal()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
   document.getElementById('modalClose').addEventListener('click', () => {
     document.getElementById('clientModal').classList.remove('active');
   });
@@ -1623,7 +2094,24 @@
     renderAll();
   });
 
-  renderAll();
+  document.getElementById('zeltyToggle').addEventListener('change', (e) => {
+    const integ = loadIntegrations();
+    integ.zelty = { actif: e.target.checked, modifieLe: new Date().toISOString() };
+    saveIntegrations(integ);
+    renderIntegration();
+  });
+
+  // La synchro Firestore ne démarre qu'après connexion d'un compte staff :
+  // avant, les règles refusent toute lecture et les listeners échoueraient.
+  onStaffReady(() => {
+    renderAll();
+    boSync.init({
+      storeKey: STORE_KEY,
+      pauseKey: PAUSE_KEY,
+      reglageKeys: [TABLES_KEY, WAIT_KEY, PLAN_META_KEY, INTEG_KEY],
+      onChange: renderAll
+    });
+  });
 </script>
 
 </body>

@@ -1,0 +1,369 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // This security rules file assumes the following data structures:
+    //
+    // Collection: restaurants
+    // Document ID: 'perpignan' | 'montpellier'
+    // Fields:
+    //   - slug: string (required, 'perpignan' | 'montpellier') - identifier slug
+    //   - nom: string (required, 'Perpignan' | 'Montpellier') - human readable name
+    //   - en_pause: bool (required) - whether booking is paused
+    //   - updatedAt: timestamp | string (optional) - last modification timestamp
+    //
+    // Collection: reglages
+    // Document ID: string (e.g. 'fricaccia_tables_config', 'fricaccia_waitlist')
+    // Fields:
+    //   - cle: string (required, matches doc ID) - configuration key
+    //   - valeur: any (required) - JSON payload / structured settings
+    //   - updatedAt: timestamp | string (optional) - last update
+    //
+    // Collection: reservations
+    // Document ID: 6-character uppercase alphanumeric ref (e.g. '7K9M2Q')
+    // Fields:
+    //   - ref: string (required, immutable, 3-40 chars, 6 chars for public create)
+    //   - restaurant: string (required, 'Perpignan' | 'Montpellier')
+    //   - date: string (required, YYYY-MM-DD, 10 chars)
+    //   - heure: string (required, HH:MM, 5 chars)
+    //   - email: string (required, valid email address, <= 200 chars)
+    //   - statut: string (required, enum: 'nouvelle', 'confirmee', 'rappelee',
+    //             'en_retard', 'arrivee', 'installee', 'commande_prise',
+    //             'terminee', 'a_nettoyer', 'annulee', 'no_show')
+    //   - data: map (required, complete reservation payload from booking widget / CRM)
+    //   - creeLe: string (optional, ISO 8601 string, <= 50 chars)
+    //   - updatedAt: timestamp | string (optional) - last update timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Staff authorization.
+    // Un compte Firebase Auth ne suffit PAS : il faut un document staff/{uid}
+    // creé par un admin du back-office, ou un custom claim posé côté serveur.
+    // (Ancienne version : tout utilisateur authentifié non anonyme, ou toute
+    // adresse @fricaccia.*, était staff — l'inscription Firebase Auth étant
+    // ouverte et l'e-mail non vérifié, n'importe qui pouvait devenir staff.)
+    function staffDoc() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function hasStaffDoc() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        hasStaffDoc() ||
+        request.auth.token.get('admin', false) == true ||
+        request.auth.token.get('staff', false) == true ||
+        request.auth.token.get('role', '') in ['admin', 'responsable', 'salle', 'lecture', 'staff']
+      );
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('admin', false) == true ||
+        request.auth.token.get('role', '') == 'admin' ||
+        (hasStaffDoc() && staffDoc().role == 'admin')
+      );
+    }
+
+    // Amorçage : seules ces adresses peuvent se déclarer admin elles-mêmes,
+    // une seule fois, au premier login (sinon aucun admin ne pourrait exister).
+    function isBootstrapAdminEmail() {
+      return isAuthenticated() &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() in ['fricacciamarketing@gmail.com'];
+    }
+
+    // Structure d'un document staff/{uid}
+    function isValidStaffDoc(d, uid) {
+      return d.keys().hasAll(['email', 'role']) &&
+        d.keys().hasOnly(['uid', 'email', 'role', 'restaurant_slug', 'creeLe', 'creePar']) &&
+        (!('uid' in d) || d.uid == uid) &&
+        isValidEmail(d.email) &&
+        d.role is string &&
+        d.role in ['admin', 'responsable', 'salle', 'lecture'] &&
+        (!('restaurant_slug' in d) || d.restaurant_slug == null ||
+          d.restaurant_slug in ['perpignan', 'montpellier', '']) &&
+        // creeLe : string ISO côté client, timestamp si un jour écrit côté serveur
+        (!('creeLe' in d) || d.creeLe is timestamp || (d.creeLe is string && d.creeLe.size() <= 50)) &&
+        (!('creePar' in d) || d.creePar == null || (d.creePar is string && d.creePar.size() <= 200));
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 200 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate ISO date string (YYYY-MM-DD)
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    // Validate time string (HH:MM)
+    function isValidTimeString(timeStr) {
+      return timeStr is string &&
+        timeStr.matches('^\\d{2}:\\d{2}$');
+    }
+
+    // Validate pax (covers both integer and string representation between 1 and 30)
+    function isValidPax(pax) {
+      return (pax is int && pax >= 1 && pax <= 30) ||
+             (pax is string && pax.matches('^([1-9]|[12][0-9]|30)$'));
+    }
+
+    // Validate restaurant name
+    function isValidRestaurantName(name) {
+      return name is string &&
+        name in ['Perpignan', 'Montpellier', 'perpignan', 'montpellier'];
+    }
+
+    // Validate allowed status values
+    function isValidStatus(status) {
+      return status is string &&
+        status in [
+          'nouvelle', 'confirmee', 'rappelee', 'en_retard', 'arrivee',
+          'installee', 'commande_prise', 'terminee', 'a_nettoyer',
+          'annulee', 'no_show'
+        ];
+    }
+
+    // Validate nested reservation 'data' map
+    function isValidReservationData(d) {
+      return d is map &&
+        d.keys().hasOnly([
+          'id', 'bookingRef', 'restaurant', 'date', 'heure', 'pax', 'service',
+          'civilite', 'prenom', 'nom', 'email', 'tel', 'note', 'noteInterne',
+          'offresEmail', 'offresSms', 'source', 'statut', 'creeLe', 'table',
+          'tableNum', 'tags', 'consentement', 'linkId', 'updatedAt'
+        ]) &&
+        (!('id' in d) || (d.id is string && d.id.size() <= 40)) &&
+        (!('bookingRef' in d) || (d.bookingRef is string && d.bookingRef.size() <= 40)) &&
+        (!('restaurant' in d) || isValidRestaurantName(d.restaurant)) &&
+        (!('date' in d) || isValidDateString(d.date)) &&
+        (!('heure' in d) || isValidTimeString(d.heure)) &&
+        (!('pax' in d) || isValidPax(d.pax)) &&
+        // 'service' est un mot réservé du langage des règles : passer par get()
+        (!('service' in d) || (d.get('service', '') is string && d.get('service', '').size() <= 50)) &&
+        (!('civilite' in d) || d.civilite == null || (d.civilite is string && d.civilite.size() <= 20)) &&
+        (!('prenom' in d) || (d.prenom is string && d.prenom.size() <= 100)) &&
+        (!('nom' in d) || (d.nom is string && d.nom.size() <= 100)) &&
+        (!('email' in d) || isValidEmail(d.email)) &&
+        (!('tel' in d) || (d.tel is string && d.tel.size() <= 50)) &&
+        (!('note' in d) || (d.note is string && d.note.size() <= 1000)) &&
+        (!('noteInterne' in d) || (d.noteInterne is string && d.noteInterne.size() <= 1000)) &&
+        (!('offresEmail' in d) || (d.offresEmail is bool)) &&
+        (!('offresSms' in d) || (d.offresSms is bool)) &&
+        (!('source' in d) || (d.source is string && d.source.size() <= 50)) &&
+        (!('statut' in d) || isValidStatus(d.statut)) &&
+        // creeLe : string ISO côté client, timestamp si un jour écrit côté serveur
+        (!('creeLe' in d) || d.creeLe is timestamp || (d.creeLe is string && d.creeLe.size() <= 50)) &&
+        (!('table' in d) || d.table == null || (d.table is string && d.table.size() <= 50)) &&
+        (!('tableNum' in d) || d.tableNum == null || (d.tableNum is string && d.tableNum.size() <= 50)) &&
+        (!('tags' in d) || (d.tags is list && d.tags.size() <= 20)) &&
+        (!('consentement' in d) || (d.consentement is bool)) &&
+        (!('linkId' in d) || d.linkId == null || (d.linkId is string && d.linkId.size() <= 100));
+    }
+
+    // Domain Validator: Validate reservation document structure & constraints
+    function isValidReservation(docData) {
+      return docData.keys().hasAll(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data']) &&
+        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe']) &&
+        docData.ref is string && docData.ref.size() >= 3 && docData.ref.size() <= 40 &&
+        isValidRestaurantName(docData.restaurant) &&
+        isValidDateString(docData.date) &&
+        isValidTimeString(docData.heure) &&
+        isValidEmail(docData.email) &&
+        isValidStatus(docData.statut) &&
+        isValidReservationData(docData.data) &&
+        (!('creeLe' in docData) || docData.creeLe is timestamp || (docData.creeLe is string && docData.creeLe.size() <= 50)) &&
+        (!('updatedAt' in docData) || (docData.updatedAt is timestamp || (docData.updatedAt is string && docData.updatedAt.size() <= 50)));
+    }
+
+    // E-mail facultatif : le back-office crée des réservations prises au téléphone
+    // ou au comptoir, sans adresse. Le widget public, lui, exige un e-mail valide.
+    function isValidOptionalEmail(e) {
+      return e is string && (e == '' || isValidEmail(e));
+    }
+
+    // Validation allégée pour les écritures du staff (compte déjà authentifié et
+    // inscrit au roster) : on borne la forme du document et les clés autorisées,
+    // sans imposer le détail de chaque champ comme pour une création publique.
+    function isValidStaffReservation(docData) {
+      return docData.keys().hasAll(['ref', 'restaurant', 'date', 'heure', 'statut', 'data']) &&
+        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe']) &&
+        docData.ref is string && docData.ref.size() >= 3 && docData.ref.size() <= 60 &&
+        isValidRestaurantName(docData.restaurant) &&
+        isValidDateString(docData.date) &&
+        isValidTimeString(docData.heure) &&
+        (!('email' in docData) || isValidOptionalEmail(docData.email)) &&
+        isValidStatus(docData.statut) &&
+        docData.data is map &&
+        docData.data.keys().hasOnly([
+          'id', 'bookingRef', 'restaurant', 'date', 'heure', 'pax', 'service',
+          'civilite', 'prenom', 'nom', 'email', 'tel', 'note', 'noteInterne',
+          'offresEmail', 'offresSms', 'source', 'statut', 'creeLe', 'table',
+          'tableNum', 'tags', 'consentement', 'linkId', 'updatedAt'
+        ]);
+    }
+
+    // Public creation rules for customers booking online
+    function isValidPublicCreate(ref) {
+      return request.resource.data.statut == 'nouvelle' &&
+        request.resource.data.ref == ref &&
+        ref.matches('^[A-Z0-9]{6}$') &&
+        request.resource.data.restaurant in ['Perpignan', 'Montpellier'] &&
+        isValidDateString(request.resource.data.date) &&
+        isValidTimeString(request.resource.data.heure) &&
+        isValidEmail(request.resource.data.email) &&
+        request.resource.data.data is map &&
+        isValidPax(request.resource.data.data.pax) &&
+        request.resource.data.data.prenom is string &&
+        request.resource.data.data.prenom.size() >= 1 &&
+        request.resource.data.data.prenom.size() <= 80 &&
+        request.resource.data.data.nom is string &&
+        request.resource.data.data.nom.size() >= 1 &&
+        request.resource.data.data.nom.size() <= 80 &&
+        isValidReservation(request.resource.data);
+    }
+
+    // Client cancellation update rule (via cancel.html)
+    function isValidClientCancellation(ref) {
+      return !(resource.data.statut in ['annulee', 'terminee', 'no_show']) &&
+        request.resource.data.statut == 'annulee' &&
+        request.resource.data.ref == resource.data.ref &&
+        request.resource.data.ref == ref &&
+        request.resource.data.restaurant == resource.data.restaurant &&
+        request.resource.data.date == resource.data.date &&
+        request.resource.data.heure == resource.data.heure &&
+        request.resource.data.email == resource.data.email &&
+        (!('creeLe' in resource.data) || request.resource.data.creeLe == resource.data.creeLe) &&
+        request.resource.data.data is map &&
+        (!('email' in request.resource.data.data) || request.resource.data.data.email == resource.data.email) &&
+        (!('nom' in resource.data.data) || request.resource.data.data.nom == resource.data.data.nom) &&
+        (!('prenom' in resource.data.data) || request.resource.data.data.prenom == resource.data.data.prenom) &&
+        (!isAuthenticated() || request.auth.token.email == null || request.auth.token.email.lower() == resource.data.email.lower()) &&
+        isValidReservation(request.resource.data);
+    }
+
+    // Validator for restaurant document
+    function isValidRestaurantDoc(data, slug) {
+      return slug in ['perpignan', 'montpellier'] &&
+        data.keys().hasAll(['slug', 'nom', 'en_pause']) &&
+        data.keys().hasOnly(['slug', 'nom', 'en_pause', 'updatedAt']) &&
+        data.slug == slug &&
+        ((slug == 'perpignan' && data.nom == 'Perpignan') || (slug == 'montpellier' && data.nom == 'Montpellier')) &&
+        data.en_pause is bool &&
+        (!('updatedAt' in data) || (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 50)));
+    }
+
+    // Validator for settings / reglages document
+    function isValidReglage(data, cleId) {
+      return data.keys().hasAll(['cle', 'valeur']) &&
+        data.keys().hasOnly(['cle', 'valeur', 'updatedAt']) &&
+        data.cle is string && data.cle == cleId && data.cle.size() <= 100 &&
+        (!('updatedAt' in data) || (data.updatedAt is timestamp || (data.updatedAt is string && data.updatedAt.size() <= 50)));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 0. Staff Collection — roster des comptes autorisés sur le back-office.
+    // La seule source de vérité de l'accès : supprimer le doc révoque l'accès
+    // immédiatement, même si le compte Firebase Auth existe toujours.
+    match /staff/{uid} {
+      // Chacun lit sa propre fiche (pour connaître son rôle) ; le staff voit tout le roster.
+      allow get: if isAuthenticated() && (request.auth.uid == uid || isStaff());
+      allow list: if isStaff();
+
+      // Création : par un admin, ou auto-déclaration d'amorçage pour l'adresse prévue.
+      allow create: if isValidStaffDoc(request.resource.data, uid) && (
+        isAdmin() ||
+        (request.auth.uid == uid && isBootstrapAdminEmail() && request.resource.data.role == 'admin')
+      );
+
+      // Modification de rôle : admin seulement, e-mail immuable.
+      allow update: if isAdmin() &&
+        isValidStaffDoc(request.resource.data, uid) &&
+        request.resource.data.email == resource.data.email;
+
+      // Retrait : admin seulement, et jamais sa propre fiche (évite de se verrouiller dehors).
+      allow delete: if isAdmin() && request.auth.uid != uid;
+    }
+
+    // 1. Restaurants Collection
+    match /restaurants/{restoId} {
+      // Public read: anyone can check pause status before booking
+      allow read: if true;
+
+      // Staff write with schema validation
+      allow write: if isStaff() && isValidRestaurantDoc(request.resource.data, restoId);
+    }
+
+    // 2. Settings / Réglages Collection (Table config, waitlists, metadata)
+    match /reglages/{cleId} {
+      // Staff-only read and write
+      allow read: if isStaff();
+      allow create, update: if isStaff() && isValidReglage(request.resource.data, cleId);
+      allow delete: if isAdmin();
+    }
+
+    // 3. Reservations Collection
+    match /reservations/{ref} {
+      // Backoffice staff can query and list the entire collection.
+      // Public queries/listing are strictly forbidden to prevent data scraping.
+      allow list: if isStaff();
+
+      // Single document read:
+      // - Backoffice staff can read any reservation document.
+      // - Public lookup allowed for existence probe (resource == null) when generating unique ref
+      //   and for single doc consultation when the document's ref matches.
+      allow get: if isStaff() ||
+                    resource == null ||
+                    (
+                      resource.data.ref == ref &&
+                      (!isAuthenticated() || request.auth.token.email == null || request.auth.token.email.lower() == resource.data.email.lower() || isStaff())
+                    );
+
+      // Create:
+      // - Public customer booking: validated fields, statut 'nouvelle', pax 1-30, valid ref
+      // - Backoffice staff: full creation allowed with data validation
+      allow create: if (isStaff() && isValidStaffReservation(request.resource.data)) ||
+                       isValidPublicCreate(ref);
+
+      // Update:
+      // - Public customer: allowed only to cancel their own reservation (statut -> 'annulee',
+      //   previous status not in ['annulee', 'terminee', 'no_show'], immutable fields preserved)
+      // - Backoffice staff: allowed to update any reservation
+      allow update: if (isStaff() && isValidStaffReservation(request.resource.data)) ||
+                       isValidClientCancellation(ref);
+
+      // Delete:
+      // - Backoffice staff only
+      allow delete: if isStaff();
+    }
+  }
+}

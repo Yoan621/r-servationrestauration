@@ -8,8 +8,8 @@
 
 insert into restaurants (nom, slug, delai_min_resa_min)
 values
-  ('Fricaccia Montpellier', 'montpellier', 120),
-  ('Fricaccia Perpignan', 'perpignan', 120)
+  ('Fricaccia Montpellier', 'montpellier', 0),
+  ('Fricaccia Perpignan', 'perpignan', 0)
 on conflict (slug) do nothing;
 
 -- ---------------------------------------------------------------------
@@ -43,6 +43,60 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------
+-- Statut pause (widget public : bandeau + désactivation du bouton résa)
+create or replace function public.restaurant_pause_status(p_slug text)
+returns table(en_pause boolean, jusqu_a timestamptz)
+language sql
+security definer
+stable
+as $$
+  select (bookings_paused_until is not null and bookings_paused_until > now()), bookings_paused_until
+  from restaurants where slug = p_slug;
+$$;
+grant execute on function public.restaurant_pause_status(text) to anon;
+
+-- ---------------------------------------------------------------------
+-- Bascule pause (équipe : admin/responsable de son propre restaurant)
+-- p_minutes null = pause indéfinie (jusqu'à levée manuelle), 0 = lever la pause
+create or replace function public.definir_pause_restaurant(p_slug text, p_minutes int default null)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  v_restaurant_id uuid;
+  v_autorise boolean;
+begin
+  select id into v_restaurant_id from restaurants where slug = p_slug;
+  if v_restaurant_id is null then
+    raise exception 'restaurant inconnu: %', p_slug;
+  end if;
+
+  select exists(
+    select 1 from utilisateurs_roles ur
+    where ur.user_id = auth.uid()
+      and ur.role in ('admin','responsable')
+      and (ur.role = 'admin' or ur.restaurant_id = v_restaurant_id)
+  ) into v_autorise;
+  if not v_autorise then
+    raise exception 'non autorisé';
+  end if;
+
+  update restaurants
+     set bookings_paused_until = case when p_minutes = 0 then null
+                                       when p_minutes is null then 'infinity'::timestamptz
+                                       else now() + (p_minutes || ' minutes')::interval end
+   where id = v_restaurant_id;
+
+  insert into activity_log(restaurant_id, user_id, action, apres)
+  values (v_restaurant_id, auth.uid(), 'restaurant.pause_toggle', jsonb_build_object('minutes', p_minutes));
+
+  return true;
+end;
+$$;
+grant execute on function public.definir_pause_restaurant(text,int) to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Création réservation (upsert client par email + insert réservation)
 create or replace function public.creer_reservation(
   p_restaurant_slug text,
@@ -67,9 +121,11 @@ declare
   v_client_id uuid;
   v_booking_ref text;
 begin
-  select id into v_restaurant_id from restaurants where slug = p_restaurant_slug;
+  select id into v_restaurant_id from restaurants
+    where slug = p_restaurant_slug
+      and (bookings_paused_until is null or bookings_paused_until <= now());
   if v_restaurant_id is null then
-    raise exception 'restaurant inconnu: %', p_restaurant_slug;
+    raise exception 'réservations en pause ou restaurant inconnu: %', p_restaurant_slug;
   end if;
 
   insert into clients (nom, prenom, email, telephone, consentement_marketing, consentement_le)

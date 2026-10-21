@@ -1,3 +1,9 @@
 {
-  "outputDirectory": "mockup"
+  "outputDirectory": "mockup",
+  "crons": [
+    {
+      "path": "/api/cron-avis",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }

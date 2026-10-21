@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fricaccia — Gérer ma réservation</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-Regular.woff') format('woff');font-weight:400;font-display:swap;}
   @font-face{font-family:'Aloevera';src:url('https://fricaccia.fr/wp-content/uploads/2025/06/AloeveraDisplay-SemiBold.woff') format('woff');font-weight:600;font-display:swap;}
@@ -105,7 +104,9 @@
   <p class="note">Un empêchement ? Tu peux aussi contacter directement le restaurant.</p>
 </main>
 
-<script src="assets/js/supabase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const ref = params.get('ref');
@@ -126,17 +127,19 @@
   async function charger(){
     if (!ref || !email) { afficherErreur(); return; }
 
-    const { data, error } = await supabaseClient.rpc('chercher_reservation', { p_booking_ref: ref, p_email: email });
-    if (error || !data || data.length === 0) { afficherErreur(); return; }
+    let data;
+    try {
+      data = await pbApi(`/api/fricaccia/reservation?ref=${encodeURIComponent(ref)}&email=${encodeURIComponent(email)}`);
+    } catch (e) { afficherErreur(); return; }
 
-    const r = data[0];
+    const r = data.reservation;
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
 
-    document.getElementById('recapResto').textContent = r.restaurant_nom;
-    document.getElementById('recapDate').textContent = r.date_resa;
-    document.getElementById('recapHeure').textContent = r.heure_resa.slice(0,5);
-    document.getElementById('recapPax').textContent = `${r.nb_personnes} personne${r.nb_personnes > 1 ? 's' : ''}`;
+    document.getElementById('recapResto').textContent = `Fricaccia ${r.restaurant}`;
+    document.getElementById('recapDate').textContent = r.date;
+    document.getElementById('recapHeure').textContent = r.heure;
+    document.getElementById('recapPax').textContent = `${r.pax} personne${r.pax > 1 ? 's' : ''}`;
     document.getElementById('recapNom').textContent = `${r.prenom} ${r.nom}`;
     document.getElementById('recapEmail').textContent = r.email;
 
@@ -148,15 +151,19 @@
       document.getElementById('cancelForm').style.display = 'none';
     }
 
-    // Historique (même client, preuve = ce lien précis)
-    const { data: histo } = await supabaseClient.rpc('mes_reservations', { p_booking_ref: ref, p_email: email });
+    // Historique (même email, preuve = ce lien précis)
+    const histo = data.historique;
     if (histo && histo.length > 1) {
       document.getElementById('historique').style.display = 'block';
       const list = document.getElementById('histoList');
       histo.forEach(h => {
         const row = document.createElement('div');
         row.className = 'histo-row';
-        row.innerHTML = `<span>${h.restaurant_nom} · ${h.date_resa} ${h.heure_resa.slice(0,5)}</span><span>${STATUTS_LABELS[h.statut] || h.statut}</span>`;
+        const gauche = document.createElement('span');
+        gauche.textContent = `Fricaccia ${h.restaurant} · ${h.date} ${h.heure}`;
+        const droite = document.createElement('span');
+        droite.textContent = STATUTS_LABELS[h.statut] || h.statut;
+        row.append(gauche, droite);
         list.appendChild(row);
       });
     }
@@ -165,11 +172,11 @@
       this.disabled = true;
       this.textContent = 'Annulation...';
       const motif = document.getElementById('motif').value;
-      const { data: ok, error: errAnnul } = await supabaseClient.rpc('annuler_reservation', { p_booking_ref: ref, p_email: email, p_motif: motif });
-      if (errAnnul || !ok) {
-        alert("Erreur lors de l'annulation, réessaie ou contacte le restaurant.");
+      try {
+        await pbApi('/api/fricaccia/annuler', { method: 'POST', body: { ref, email, motif } });
+      } catch (e) {
         this.disabled = false;
-        this.textContent = 'Annuler ma réservation';
+        this.textContent = 'Erreur, réessaie ou contacte le restaurant';
         return;
       }
       document.getElementById('content').style.display = 'none';
