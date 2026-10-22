@@ -385,6 +385,7 @@
   document.getElementById('service').addEventListener('change', rafraichirCreneaux);
 
   const LINKS_KEY = 'fricaccia_links';
+  const BO_STORE_KEY = 'fricaccia_reservations';
 
   // Notification de la réservation côté serveur : e-mail de confirmation au client
   // ET notification WhatsApp de l'équipe. Aucune clé (Brevo, CallMeBot) ni numéro
@@ -594,6 +595,29 @@
       return;
     }
     reservation.bookingRef = bookingRef;
+
+    try {
+      const boList = JSON.parse(localStorage.getItem(BO_STORE_KEY)) || [];
+      boList.push({
+        id: bookingRef || Date.now().toString(36),
+        restaurant: reservation.restaurant,
+        pax: reservation.pax,
+        date: reservation.date,
+        service: reservation.service,
+        heure: reservation.heure,
+        nom: (reservation.nom || '') + (reservation.prenom ? ', ' + reservation.prenom : ''),
+        prenom: reservation.prenom || '',
+        tel: reservation.tel || '',
+        email: reservation.email || '',
+        note: reservation.note || '',
+        consentement: reservation.offresEmail || reservation.offresSms || false,
+        statut: 'nouvelle',
+        source: reservation.source || 'site',
+        linkId: activeLink ? (activeLink.id || null) : null,
+        creeLe: new Date().toISOString()
+      });
+      localStorage.setItem(BO_STORE_KEY, JSON.stringify(boList));
+    } catch(e) { console.warn('Sync BO localStorage échouée', e); }
 
     if (document.getElementById('saveInfo').checked) {
       localStorage.setItem(CONTACT_KEY, JSON.stringify({
