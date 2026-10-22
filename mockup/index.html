@@ -606,6 +606,7 @@
         <div class="field">
           <label>Restaurant</label>
           <select id="newLinkResto">
+            <option value="">Les 2 restaurants</option>
             <option value="Perpignan">Perpignan</option>
             <option value="Montpellier">Montpellier</option>
           </select>
@@ -1580,7 +1581,7 @@
 
     el.innerHTML = links.slice().reverse().map(l => `
       <div class="link-row" data-id="${l.id}">
-        <span class="link-resto">${l.restaurant}</span>
+        <span class="link-resto">${l.restaurant || '2 restos'}</span>
         <div class="link-body">
           <div class="link-label">${l.label || (l.source.charAt(0).toUpperCase() + l.source.slice(1))}</div>
           <span class="link-url">${window.location.origin}${window.location.pathname.replace('index.html','')}${linkUrl(l)}</span>

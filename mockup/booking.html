@@ -467,7 +467,9 @@
     }
     const banner = document.createElement('div');
     banner.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;';
-    banner.textContent = `Réservation ${activeLink.restaurant}, via ${activeLink.label || activeLink.source}`;
+    banner.textContent = activeLink.restaurant
+      ? `Réservation ${activeLink.restaurant}, via ${activeLink.label || activeLink.source}`
+      : `Réservation via ${activeLink.label || activeLink.source}`;
     document.querySelector('main').insertBefore(banner, document.querySelector('.card'));
   }
 
