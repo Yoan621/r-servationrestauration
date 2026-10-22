@@ -114,18 +114,18 @@ Perpignan   : https://g.page/r/CbTiWhN3LrtrEAE/review
 
 ## Ce qui n'est PAS encore fait (proposer l'ordre à Yoan, ne pas tout enchaîner sans accord)
 1. ~~**Login back-office**~~ — **fait le 2026-10-21** : `AUTH_ENABLED = true`, Firebase Auth e-mail/mot de passe, plus aucune route `localhost:8788` dans `index.html`. **Reste UN geste manuel** : activer le fournisseur dans la console Firebase → Authentication → Commencer → E-mail/Mot de passe → Activer (impossible par API sur le plan Spark : `initializeAuth` répond `BILLING_NOT_ENABLED`, c'est une fonction Identity Platform payante). Puis créer le 1er compte avec l'adresse `fricacciamarketing@gmail.com` : au premier login, le back-office crée tout seul sa fiche `staff` en rôle admin (liste d'amorçage dans `BOOTSTRAP_ADMINS` côté `index.html` et `isBootstrapAdminEmail()` côté `firestore.rules` — garder les deux synchronisés). Ensuite, tous les autres comptes se créent depuis la page « Utilisateurs & permissions ».
-2. **E-mail de confirmation post-réservation** : `booking.html` appelle `http://localhost:8788/api/send-confirmation` mais le serveur Node `send-email.js` n'est pas lancé automatiquement. À migrer dans un hook Firebase Cloud Functions ou à garder sur un serveur Node hébergé. Remplacer aussi `CANCEL_BASE_URL` (encore `localhost`) par le vrai domaine.
+2. ~~**E-mail de confirmation post-réservation**~~ — **fait le 2026-10-21** : fonction serverless `api/send-confirmation.js` (Brevo), `CANCEL_BASE_URL` renseigné avec le domaine de production. Le serveur local `server/send-email.js` reste utilisable pour le développement.
 3. **Hébergement** : Firestore est cloud (✅) et les règles sont déployées (✅). Reste : supprimer `mockup/assets/js/pb-config.js` et `supabase-config.js` (résidus), et vérifier les CORS Firestore (normalement gérés par le SDK).
 4. **Ménage** : archiver `schema.sql` (Supabase), `server/migration-rpc.sql`, `mockup/dashboard-before.html`, `mockup/assets/js/supabase-config.js` et `sms_avis_premier_passage.sql` (à adapter en hook Firebase/Cloud Function si besoin).
-5. **E-mail de demande d'avis Google** : le SMS via Brevo est opérationnel. L'e-mail (template HTML Brevo) n'est pas encore créé.
+5. ~~**E-mail de demande d'avis Google**~~ — **fait le 2026-10-21** : `api/cron-avis.js` + cron Vercel. HTML écrit en dur dans `api/_lib/mail.js` (pas de template Brevo : Brevo n'en contient aucun). Testé en envoi réel, délivré. **Aucun SMS dans le workflow automatisé** — décision de Yoan, e-mail uniquement.
 6. **Temps réel complet** : `onSnapshot` est en place sur Firestore (✅ — remplace le polling PocketBase des 15 s).
 
 ---
 
 ## Règles impératives
-1. **Ne jamais commiter, pousser ni déployer en l'état.** Le back-office n'a plus de login (`AUTH_ENABLED = false`) et les règles Firestore ne sont pas encore déployées. Le dépôt étant public et Vercel publiant automatiquement, ce serait un back-office ouvert à tous. Demande toujours avant un commit ou un push.
-2. **Ne pas soumettre le vrai formulaire `booking.html` pour tester.** Il envoie une vraie notification WhatsApp à l'équipe (CallMeBot) et un vrai e-mail (Brevo). Teste plutôt via la console avec `fricacciaApi.creerReservation({...})`, puis supprime les données de test dans la console Firebase.
-3. **Secrets.** `server/.env` (clé Brevo), `../10_Reporting/.env` (clé Zelty) ne doivent jamais apparaître dans le code client, dans le chat ni dans git. Les clés sont lues côté serveur uniquement par `dev-server.py`.
+1. **Ne jamais commiter, pousser ni déployer sans l'accord explicite de Yoan.** Le dépôt GitHub est **public** et Vercel publie automatiquement tout ce qui arrive sur `main` : un push est une mise en production immédiate et visible de tous. Demande à chaque fois, même pour une correction d'une ligne. (Le back-office est désormais protégé — `AUTH_ENABLED = true` et règles Firestore déployées — mais la règle d'accord préalable reste entière.)
+2. **Ne pas soumettre le vrai formulaire `booking.html` pour tester.** Il déclenche une vraie notification WhatsApp à l'équipe (CallMeBot, désormais côté serveur) et un vrai e-mail (Brevo). Teste via la console avec `fricacciaApi.creerReservation({...})`, puis supprime les données de test.
+3. **Secrets.** `server/.env`, `server/.env.vercel`, `server/firebase-sa.json`, `../10_Reporting/.env` : jamais dans le code client, jamais dans le chat, jamais dans git (tous couverts par `.gitignore`). Avant tout push, vérifier qu'aucune valeur de `server/.env` n'apparaît dans un fichier suivi.
 4. **Pas d'`alert()` ni de `confirm()`.** Utilise des messages inline dans la page.
 5. **Pas d'asset payant.** L'ancien thème ThemeForest `assets/css/app.css` est ignoré par git — ne pas le réintroduire.
 6. **Convention des vues** : `view-<nom>` + `data-view="<nom>"` + `render<Nom>()` appelée depuis `renderAll()`.
@@ -175,3 +175,105 @@ Deux limites connues, à traiter plus tard si tu veux durcir :
 
 ### Effet de bord accepté sur `cancel.html`
 L'historique « vos autres réservations » reposait sur une requête `where('email', '==', …)` sur toute la collection, c'est-à-dire une opération `list` désormais réservée au staff (impossible à autoriser proprement : les règles ne peuvent pas vérifier le filtre d'une requête). `fricacciaApi.getReservation()` attrape le refus et n'affiche que la réservation consultée. Pour retrouver l'historique côté client, il faudrait passer par une fonction serveur.
+
+---
+
+## 2026-10-21 (après-midi) — e-mails serverless, notif WhatsApp côté serveur, Zelty, mise en ligne
+
+Session menée jusqu'au déploiement. **Le site est en production** sur
+`https://r-servationrestauration.vercel.app` (commits `b5be158` puis `fe92570`).
+
+### E-mails serverless (faits, testés en envoi réel)
+
+Zéro dépendance npm, tout en Node natif.
+
+| Fichier | Rôle |
+|---|---|
+| `api/_lib/firestore.js` | JWT RS256 signé avec `crypto` + OAuth (scope datastore), `reservationsDuJour()`, `marquerAvisEnvoye()` |
+| `api/_lib/mail.js` | Brevo, gabarits HTML, `avisUrl()`, `salutation()`, `cancelUrl()`, `googleCalendarUrl()` |
+| `api/send-confirmation.js` | POST — e-mail client **et** notif WhatsApp équipe |
+| `api/cron-avis.js` | résas de la veille, statut `terminee`, sans `avisEnvoyeLe` → e-mail d'avis + marquage |
+| `vercel.json` | cron `0 9 * * *` — **UTC**, donc 11h Paris en été, 10h en hiver |
+
+`api/cron-avis.js` accepte `?dryRun=1&date=AAAA-MM-JJ` et est protégé par `CRON_SECRET`.
+Ton des e-mails : **on parle de la Nonna, pas du plat** (« La Nonna veut savoir »,
+« ⭐ Laisser un avis à la Nonna »). `replyTo` pour récupérer les mécontents hors Google.
+
+Le logo passe par une **URL HTTPS**, jamais en data URI : Gmail tronque au-delà de 102 Ko.
+
+### Notif WhatsApp déplacée côté serveur (`api/_lib/whatsapp.js`)
+
+Le numéro de l'équipe et la clé CallMeBot étaient **en clair dans `mockup/booking.html`**,
+donc publics dans le code source de la page en ligne et sur le dépôt public, pendant
+environ un mois. Ils vivent maintenant en variables d'environnement.
+
+Résolution du destinataire, dans l'ordre :
+1. `WHATSAPP_PERPIGNAN_PHONE` / `_APIKEY` (ou `MONTPELLIER`) si la paire est complète
+2. sinon le repli commun `WHATSAPP_PHONE` / `WHATSAPP_APIKEY` ← **état v1**
+3. sinon notif ignorée — une notif ratée ne fait jamais échouer la réservation
+
+Yoan créera **2 comptes WhatsApp avec 2 clés distinctes** : il n'y aura que 4 variables
+à ajouter, **aucun code à toucher**.
+
+⚠️ **La clé CallMeBot d'origine est dans l'historique git (commit `1b0916d`)** : la retirer
+du code présent ne l'efface pas du passé. Elle est compromise, à régénérer.
+
+### API Zelty — réservations (voir `ZELTY_API.md`, 78 lignes)
+
+Relevé par sondage, la doc Zelty n'est pas publique. **La création de réservation
+fonctionne** (`POST /2.7/bookings?id_restaurant=<id>`, validée en réel puis nettoyée).
+
+**Bloquant : aucune annulation programmatique trouvée.** `DELETE` et `PATCH` sur
+`/bookings/<id>` répondent 404 dans toutes les formes essayées, alors que `GET` sur la
+même URL répond 200. Sans ce endpoint, une annulation client dans le CRM laisserait la
+table bloquée en caisse → **ne pas activer la synchro CRM → Zelty en production.**
+Décision de Yoan : pour l'instant, **l'annulation se fera à la main**.
+
+Codes de statut : `cancel_reason != 0` est le marqueur d'annulation, **pas** `status 192`
+(qui signifie aussi « table fermée sans pointage d'arrivée »). Détail dans `ZELTY_API.md`.
+
+La clé Zelty fournie est **la même que celle de `10_Reporting/.env`** — pas de clé dédiée.
+Elle a été collée en clair dans le chat : à régénérer.
+
+### Variables d'environnement Vercel — 11 au total
+
+Fichier prêt à importer : `server/.env.vercel` (gitignoré, chmod 600).
+
+`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `CANCEL_BASE_URL`,
+`FIREBASE_PROJECT_ID`, `FIREBASE_SA_CLIENT_EMAIL`, `FIREBASE_SA_PRIVATE_KEY`,
+`CRON_SECRET`, `WHATSAPP_PHONE`, `WHATSAPP_APIKEY`, `ZELTY_API_KEY`
+
+⚠️ **Les poser toutes en une fois.** Si les variables Firebase sont posées sans
+`CRON_SECRET`, le garde du cron reste inactif et n'importe qui peut déclencher des envois
+d'e-mails aux clients en appelant `/api/cron-avis`.
+
+### État vérifié en production après le push
+
+| URL | Code |
+|---|---|
+| `/`, `/booking.html`, `/index.html` | 200 — `index.html` sert bien la version Firebase |
+| `/api/send-confirmation` | fonctionne (POST vide → `Réservation incomplète`) |
+| `/api/cron-avis` | répond `FIREBASE_SA_* manquants` — attend les variables |
+| `api.callmebot.com` dans `booking.html` | plus aucune trace |
+
+### Ce qui reste
+
+1. **Poser les 11 variables** dans Vercel (Production **et** Preview), puis vérifier que
+   `/api/cron-avis` sans jeton renvoie bien **401**.
+2. **Activer Firebase Auth** — console → Authentication → Commencer → E-mail/Mot de passe
+   → Activer, puis créer `fricacciamarketing@gmail.com`. Impossible par API sur le plan
+   Spark (`BILLING_NOT_ENABLED`). Yoan n'avait pas encore l'accès au dashboard.
+   Sans ce geste, la page de login s'affiche mais refuse tout le monde.
+3. **Régénérer** la clé CallMeBot et la clé Zelty (toutes deux exposées).
+4. **Vue verrouillée par restaurant** : `restaurant_slug` est enregistré mais pas appliqué
+   — un compte Montpellier peut basculer sur Perpignan. Verrouiller le sélecteur, filtrer
+   les requêtes avec `where('restaurant','==',…)`, ajouter la règle `allow list`.
+5. **Dépendance métier** : le cron ne traite que le statut `terminee`. Si la salle ne
+   clôture pas les tables, aucun e-mail d'avis ne part. Piste : se baser plutôt sur
+   `closed_at` / `cancel_reason` lus dans Zelty.
+6. Broutilles dans `index.html` : un commentaire CSS mentionne encore « Supabase Auth »,
+   et une note affirme « Aucune connexion cloud active encore » alors que c'est Firestore.
+7. Question laissée en suspens : retirer le **bouton SMS manuel** du back-office ?
+8. `/api/zelty/check` n'existe que dans `dev-server.py` : le bouton « Vérifier sur Zelty »
+   du back-office est **cassé en production** tant que le proxy n'est pas porté en
+   fonction Vercel (`ZELTY_API_KEY` est déjà prévue dans les variables).

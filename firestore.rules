@@ -185,7 +185,7 @@ service cloud.firestore {
     // Domain Validator: Validate reservation document structure & constraints
     function isValidReservation(docData) {
       return docData.keys().hasAll(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data']) &&
-        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe']) &&
+        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe', 'zeltyBookingId']) &&
         docData.ref is string && docData.ref.size() >= 3 && docData.ref.size() <= 40 &&
         isValidRestaurantName(docData.restaurant) &&
         isValidDateString(docData.date) &&
@@ -208,7 +208,7 @@ service cloud.firestore {
     // sans imposer le détail de chaque champ comme pour une création publique.
     function isValidStaffReservation(docData) {
       return docData.keys().hasAll(['ref', 'restaurant', 'date', 'heure', 'statut', 'data']) &&
-        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe']) &&
+        docData.keys().hasOnly(['ref', 'restaurant', 'date', 'heure', 'email', 'statut', 'data', 'creeLe', 'updatedAt', 'avisEnvoyeLe', 'avisRelanceLe', 'zeltyBookingId']) &&
         docData.ref is string && docData.ref.size() >= 3 && docData.ref.size() <= 60 &&
         isValidRestaurantName(docData.restaurant) &&
         isValidDateString(docData.date) &&
@@ -260,7 +260,13 @@ service cloud.firestore {
         (!('nom' in resource.data.data) || request.resource.data.data.nom == resource.data.data.nom) &&
         (!('prenom' in resource.data.data) || request.resource.data.data.prenom == resource.data.data.prenom) &&
         (!isAuthenticated() || request.auth.token.email == null || request.auth.token.email.lower() == resource.data.email.lower()) &&
-        isValidReservation(request.resource.data);
+        // Validation par diff plutôt que re-validation complète du doc : une annulation
+        // ne doit toucher QUE le statut (racine + data.statut) et data.noteInterne.
+        // Re-valider tout le doc cassait dès qu'un champ hérité non whitelisté existait
+        // (ex. zeltyBookingId posé par la synchro caisse côté serveur), rendant les
+        // réservations synchronisées Zelty non annulables par le client.
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statut', 'data']) &&
+        request.resource.data.data.diff(resource.data.data).affectedKeys().hasOnly(['statut', 'noteInterne']);
     }
 
     // Validator for restaurant document

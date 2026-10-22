@@ -5,7 +5,7 @@
 // - chaque save pousse le diff vers Firestore ;
 // - les listeners Firestore (onSnapshot) mettent à jour le cache et déclenchent renderAll() en temps réel.
 // Les réservations sont stockées une par document (collection `reservations`),
-// les réglages (plan de salle, liste d'attente…) en document par clé (collection `reglages`),
+// les réglages (liste d'attente, intégrations…) en document par clé (collection `reglages`),
 // et le statut de pause dans la collection `restaurants`.
 
 const boSync = (() => {
@@ -180,7 +180,7 @@ const boSync = (() => {
       });
       unsubscribeListeners.push(unsubResas);
 
-      // 4. Listener temps réel sur les réglages (plan de salle, waitlist, meta, zelty)
+      // 4. Listener temps réel sur les réglages (waitlist, zelty)
       const unsubReglages = fbDb.collection('reglages').onSnapshot(snapshot => {
         if (pending > 0) return;
         let change = false;

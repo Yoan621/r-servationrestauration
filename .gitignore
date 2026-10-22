@@ -15,3 +15,5 @@ pocketbase/
 server/firebase-sa*.json
 server/.env.vercel
 *-sa.json
+.vercel
+.env*

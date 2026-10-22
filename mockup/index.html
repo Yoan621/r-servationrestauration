@@ -259,15 +259,6 @@
   .actions button{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin-right:4px;font-weight:600;}
   .actions button:hover{border-color:var(--sugo);color:var(--sugo);}
 
-  .salle{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-  .table-cell{border-radius:8px;padding:10px;text-align:center;font-size:12px;border:1.5px solid var(--border);font-weight:600;cursor:default;}
-  .table-cell .num{font-size:16px;font-weight:800;display:block;font-family:'Aloevera',sans-serif;}
-  .t-libre{background:rgba(77,170,56,.10);border-color:var(--libre);color:var(--libre);}
-  .t-reservee{background:rgba(235,177,37,.14);border-color:var(--reservee);color:#9c7a12;}
-  .t-arrive{background:rgba(224,123,57,.14);border-color:var(--arrive);color:var(--arrive);}
-  .t-occupee{background:rgba(195,23,31,.10);border-color:var(--occupee);color:var(--occupee);}
-  .t-nettoyage{background:rgba(138,108,78,.14);border-color:var(--nettoyage);color:var(--nettoyage);}
-  .t-indispo{background:rgba(185,175,160,.18);border-color:var(--indispo);color:var(--muted);}
 
   .waitlist-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
   .waitlist-item:last-child{border-bottom:none;}
@@ -342,12 +333,11 @@
   .link-actions button.danger:hover{border-color:var(--sugo);color:var(--sugo);}
   .copied{color:var(--basil)!important;border-color:var(--basil)!important;}
 
-  /* Réservation manuelle / waitlist / salle interactive */
+  /* Réservation manuelle / waitlist */
   .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
   .card-head h2{margin:0;}
   .btn-mini{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:7px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-weight:700;font-family:'Aloevera',sans-serif;}
   .btn-mini:hover{border-color:var(--sugo);color:var(--sugo);}
-  .table-cell{transition:transform .1s;}
   .pax-select{background:var(--paper);border:1px solid var(--border);color:var(--char);padding:4px 6px;border-radius:6px;font-size:11px;width:60px;}
   .form-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
   .form-grid .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;}
@@ -418,7 +408,6 @@
     .grid2{grid-template-columns:minmax(0,1fr);}
     .grid2>*{min-width:0;}
     .card-head{flex-wrap:wrap;gap:10px;}
-    .salle{grid-template-columns:repeat(3,1fr);}
     .link-form,.form-grid{grid-template-columns:1fr !important;}
     .forecast{overflow-x:auto;}
     .card{overflow-x:auto;}
@@ -478,12 +467,6 @@
 
     <div class="sidebar-heading">Paramètres</div>
     <ul class="sidebar-menu">
-      <li class="sidebar-menu-item">
-        <a class="sidebar-menu-button tab-btn" data-view="plan-salle" href="#">
-          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">event_seat</span>
-          <span class="sidebar-menu-text">Plan de salle &amp; tables</span>
-        </a>
-      </li>
       <li class="sidebar-menu-item">
         <a class="sidebar-menu-button tab-btn" data-view="acces" href="#">
           <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">supervisor_account</span>
@@ -585,22 +568,6 @@
         <div id="agendaBox"></div>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <h2 style="margin:0;">Plan de salle</h2>
-          <button class="btn-mini" id="importPlanBtn">Importer un plan</button>
-        </div>
-        <div class="salle" id="salleGrid"></div>
-        <p class="note" id="planSourceNote" style="display:none;margin-top:10px;"></p>
-        <div class="legend">
-          <span><i class="dot" style="background:var(--libre)"></i>Libre</span>
-          <span><i class="dot" style="background:var(--reservee)"></i>Réservée</span>
-          <span><i class="dot" style="background:var(--arrive)"></i>Client arrivé</span>
-          <span><i class="dot" style="background:var(--occupee)"></i>Occupée</span>
-          <span><i class="dot" style="background:var(--nettoyage)"></i>Nettoyage</span>
-          <span><i class="dot" style="background:var(--indispo)"></i>Indisponible</span>
-        </div>
-      </div>
 
       <div class="card">
         <div class="card-head">
@@ -652,7 +619,6 @@
             <option value="tiktok">TikTok</option>
             <option value="facebook">Facebook</option>
             <option value="google">Google Business Profile / Fiche</option>
-            <option value="qr_table">QR code table</option>
             <option value="flyer">Flyer / Menu papier</option>
             <option value="influenceur">Influenceur / Partenaire</option>
             <option value="whatsapp">WhatsApp</option>
@@ -670,26 +636,6 @@
     <p class="note">Chaque lien préremplit le restaurant + trace la source sur la réservation créée. En prod (Vercel) : URL propre par resto (<code>/montpellier</code>, <code>/perpignan</code>) via rewrite — même pattern que <code>/blog/:slug</code> chez TR Réflexologie.</p>
   </div>
 
-  <div class="view" id="view-plan-salle">
-    <div class="kpis" id="planKpisRow" style="grid-template-columns:repeat(3,1fr);"></div>
-    <div class="card">
-      <div class="card-head">
-        <h2 style="margin:0;">Plan de salle &amp; tables — <span id="planSalleResto"></span></h2>
-        <button class="btn-mini" id="importPlanBtn2">Importer un plan</button>
-      </div>
-      <div class="salle" id="salleGrid2"></div>
-      <p class="note" id="planSourceNote2" style="display:none;margin-top:10px;"></p>
-      <div class="legend">
-        <span><i class="dot" style="background:var(--libre)"></i>Libre</span>
-        <span><i class="dot" style="background:var(--reservee)"></i>Réservée</span>
-        <span><i class="dot" style="background:var(--arrive)"></i>Client arrivé</span>
-        <span><i class="dot" style="background:var(--occupee)"></i>Occupée</span>
-        <span><i class="dot" style="background:var(--nettoyage)"></i>Nettoyage</span>
-        <span><i class="dot" style="background:var(--indispo)"></i>Indisponible</span>
-      </div>
-    </div>
-    <p class="note">Change de restaurant en haut (Perpignan / Montpellier) pour gérer son plan de salle — chaque resto a sa propre configuration de tables.</p>
-  </div>
 
   <div class="view" id="view-integration">
     <div class="card">
@@ -725,7 +671,7 @@
         <tbody id="staffTableBody"></tbody>
       </table>
     </div>
-    <p class="note">Rôles : <b>admin</b> (accès tous restaurants + gestion des utilisateurs), <b>responsable</b>/<b>salle</b> (accès scopé à un restaurant), <b>lecture</b> (consultation seule).</p>
+    <p class="note">Rôles : <b>admin</b> (accès tous restaurants + gestion des utilisateurs), <b>responsable</b> (accès scopé à un restaurant), <b>lecture</b> (consultation seule).</p>
     <p class="note">« Retirer » coupe l'accès immédiatement (la fiche staff est supprimée, les règles Firestore refusent alors tout). Le compte Firebase Auth lui-même, s'il doit disparaître complètement, se supprime depuis la console Firebase → Authentication.</p>
   </div>
 
@@ -809,7 +755,6 @@
         <select id="stRole">
           <option value="admin">Admin (tous restaurants)</option>
           <option value="responsable" selected>Responsable</option>
-          <option value="salle">Salle</option>
           <option value="lecture">Lecture seule</option>
         </select>
       </div>
@@ -822,26 +767,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="importPlanModal">
-  <div class="modal">
-    <button class="modal-close" id="importPlanModalClose">✕</button>
-    <h3 style="margin-top:0;">Importer le plan de salle — <span id="importPlanResto"></span></h3>
-    <p class="note" style="text-align:left;margin:0 0 12px;">
-      1 table par ligne : <code>nom,capacité</code>. Depuis un fichier CSV/TXT ou collé directement.
-      Remplace le plan de salle actuel de ce restaurant.
-    </p>
-    <div class="field" style="margin-bottom:12px;">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;">Fichier CSV / TXT</label>
-      <input type="file" id="importPlanFile" accept=".csv,.txt">
-    </div>
-    <div class="field" style="margin-bottom:14px;">
-      <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600;">Ou coller ici</label>
-      <textarea id="importPlanText" rows="8" placeholder="T1,4&#10;T2,2&#10;T3,4" style="width:100%;background:var(--paper);border:1px solid var(--border);color:var(--char);padding:9px 10px;border-radius:7px;font-size:13px;font-family:'Aloevera',sans-serif;resize:vertical;"></textarea>
-    </div>
-    <p class="note" id="importPlanError" style="display:none;color:var(--sugo);text-align:left;margin:0 0 10px;"></p>
-    <button class="btn-mini" id="importPlanSubmit" style="width:100%;background:var(--accent);color:#fff;border:none;padding:10px;">Remplacer le plan de salle</button>
-  </div>
-</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -1137,7 +1062,6 @@
   });
 
   const STORE_KEY = 'fricaccia_reservations';
-  const TABLES_KEY = 'fricaccia_tables_config';
   const WAIT_KEY = 'fricaccia_waitlist';
   const PAUSE_KEY = 'fricaccia_pause';
 
@@ -1149,18 +1073,6 @@
     localStorage.setItem(STORE_KEY, JSON.stringify(list));
   }
 
-  // Config plan de salle — structure fixe (setup restaurant, pas donnée client fictive)
-  function loadTablesConfig(){
-    let cfg = JSON.parse(localStorage.getItem(TABLES_KEY) || 'null');
-    if (!cfg) {
-      cfg = {
-        Perpignan:   [{n:'T1',c:4},{n:'T2',c:2},{n:'T3',c:4},{n:'T4',c:6},{n:'T5',c:2},{n:'T8',c:2},{n:'T12',c:4},{n:'T15',c:4}],
-        Montpellier: [{n:'M1',c:4},{n:'M2',c:2},{n:'M3',c:4},{n:'M4',c:6},{n:'M5',c:2},{n:'M6',c:4}]
-      };
-      localStorage.setItem(TABLES_KEY, JSON.stringify(cfg));
-    }
-    return cfg;
-  }
 
   function loadWaitlist(){ try { return JSON.parse(localStorage.getItem(WAIT_KEY)) || []; } catch(e){ return []; } }
   function saveWaitlist(l){ localStorage.setItem(WAIT_KEY, JSON.stringify(l)); boSync.pushReglage(WAIT_KEY, l); }
@@ -1199,10 +1111,6 @@
     const attendus = list.filter(r => ['nouvelle','confirmee','rappelee'].includes(r.statut)).length;
     const installes = list.filter(r => ['installee','commande_prise'].includes(r.statut)).length;
     const noshow = list.filter(r => r.statut === 'no_show').length;
-    const tablesCfg = loadTablesConfig();
-    const totalTables = currentResto ? (tablesCfg[currentResto]||[]).length
-      : Object.values(tablesCfg).reduce((a,v)=>a+v.length,0);
-    const tablesOccupees = new Set(list.filter(r => r.tableNum && ['arrivee','installee','commande_prise'].includes(r.statut)).map(r=>r.tableNum)).size;
     const now = new Date();
     const retards = list.filter(r => {
       if (!['nouvelle','confirmee','rappelee'].includes(r.statut)) return false;
@@ -1216,7 +1124,6 @@
       <div class="kpi"><div class="val">${list.length}</div><div class="lbl">Réservations du jour</div></div>
       <div class="kpi warn"><div class="val">${attendus}</div><div class="lbl">Clients attendus</div></div>
       <div class="kpi good"><div class="val">${installes}</div><div class="lbl">Clients installés</div></div>
-      <div class="kpi"><div class="val">${Math.max(totalTables - tablesOccupees,0)}</div><div class="lbl">Tables disponibles</div></div>
       <div class="kpi bad"><div class="val">${retards}</div><div class="lbl">Retards</div></div>
       <div class="kpi"><div class="val">${wait.length}</div><div class="lbl">Liste d'attente</div></div>
     `;
@@ -1251,9 +1158,8 @@
       el.innerHTML = '<div class="empty">Aucune réservation aujourd\'hui. Crée-en une via "+ Réservation manuelle" ou le <a href="booking.html" style="color:var(--accent);">widget</a>.</div>';
       return;
     }
-    const tablesCfg = currentResto ? tablesFor(currentResto) : [];
     el.innerHTML = `<table>
-      <tr><th>Heure</th><th>Client</th><th>Pers.</th><th>Table</th><th>Statut</th><th>Actions</th></tr>
+      <tr><th>Heure</th><th>Client</th><th>Pers.</th><th>Statut</th><th>Actions</th></tr>
       ${list.map(r => {
         const isRetard = ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r);
         return `<tr data-id="${r.id}">
@@ -1263,12 +1169,6 @@
             ${r.note ? `<div class="badge-note" title="${r.note}">📝 ${r.note}</div>` : ''}
           </td>
           <td>${r.pax}</td>
-          <td>
-            <select class="pax-select table-assign">
-              <option value="">—</option>
-              ${(tablesCfg.length?tablesCfg:(tablesFor(r.restaurant))).map(t=>`<option value="${t.n}" ${r.tableNum===t.n?'selected':''}>${t.n}</option>`).join('')}
-            </select>
-          </td>
           <td><span class="status-pill s-${r.statut}">${STATUT_LABELS[r.statut]||r.statut}</span></td>
           <td class="actions">
             ${r.statut !== 'annulee' && r.statut !== 'terminee' ? `<button class="advance-btn">${STATUT_LABELS[nextStatut(r.statut)] || 'Avancer'}</button>` : ''}
@@ -1292,7 +1192,6 @@
           if (r) openReviewFromReservation(r);
         });
       }
-      row.querySelector('.table-assign').addEventListener('change', (e) => updateReservation(id, r => r.tableNum = e.target.value || null));
     });
   }
 
@@ -1311,16 +1210,6 @@
     renderAll();
   }
 
-  function tablesFor(resto){
-    return loadTablesConfig()[resto] || [];
-  }
-
-  function saveTablesConfig(cfg){ localStorage.setItem(TABLES_KEY, JSON.stringify(cfg)); boSync.pushReglage(TABLES_KEY, cfg); }
-
-  const PLAN_META_KEY = 'fricaccia_tables_meta';
-  function loadPlanMeta(){ try { return JSON.parse(localStorage.getItem(PLAN_META_KEY)) || {}; } catch(e){ return {}; } }
-  function savePlanMeta(m){ localStorage.setItem(PLAN_META_KEY, JSON.stringify(m)); boSync.pushReglage(PLAN_META_KEY, m); }
-
   // Intégration Zelty : simple interrupteur activé / éteint, partagé via PocketBase (reglages)
   const INTEG_KEY = 'fricaccia_integrations';
   function loadIntegrations(){ try { return JSON.parse(localStorage.getItem(INTEG_KEY)) || {}; } catch(e){ return {}; } }
@@ -1334,84 +1223,6 @@
     document.getElementById('zeltyInfo').textContent = z.modifieLe
       ? (z.actif ? 'Activée' : 'Éteinte') + ' le ' + new Date(z.modifieLe).toLocaleString('fr-FR', { dateStyle:'short', timeStyle:'short' })
       : 'Jamais activée.';
-  }
-
-  // Parse "nom,capacité" (une table par ligne, virgule ou point-virgule ou tabulation)
-  function parsePlanText(text){
-    const rows = text.split('\n').map(l => l.trim()).filter(Boolean);
-    const tables = [];
-    const errors = [];
-    rows.forEach((line, i) => {
-      const parts = line.split(/[,;\t]/).map(p => p.trim());
-      if (parts.length < 2) { errors.push(`Ligne ${i+1} : format invalide ("${line}")`); return; }
-      const [n, capRaw] = parts;
-      const c = parseInt(capRaw, 10);
-      if (!n) { errors.push(`Ligne ${i+1} : nom de table manquant`); return; }
-      if (!Number.isFinite(c) || c <= 0) { errors.push(`Ligne ${i+1} : capacité invalide ("${capRaw}")`); return; }
-      tables.push({ n, c });
-    });
-    return { tables, errors };
-  }
-
-  function renderPlanNote(){
-    const meta = loadPlanMeta();
-    const m = currentResto && meta[currentResto];
-    let text = '', show = false;
-    if (m) {
-      const d = new Date(m.importedAt);
-      text = `Plan importé le ${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${m.fileName || 'saisie manuelle'})`;
-      show = true;
-    }
-    ['planSourceNote','planSourceNote2'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = text;
-      el.style.display = show ? 'block' : 'none';
-    });
-    const restoLbl = document.getElementById('planSalleResto');
-    if (restoLbl) restoLbl.textContent = currentResto || 'choisis un restaurant';
-  }
-
-  function renderPlanStats(){
-    const el = document.getElementById('planKpisRow');
-    if (!el) return;
-    const resto = currentResto || 'Perpignan';
-    const tables = tablesFor(resto);
-    const totalTables = tables.length;
-    const totalCouverts = tables.reduce((a,t) => a + Number(t.c||0), 0);
-    const today = todayLocal();
-    const list = loadReservations().filter(r => r.restaurant === resto && r.date === today && r.statut !== 'annulee');
-    const occupiedNums = new Set(list.filter(r => r.tableNum && ['arrivee','installee','commande_prise','a_nettoyer'].includes(r.statut)).map(r => r.tableNum));
-    const placesDispo = tables.filter(t => !occupiedNums.has(t.n)).reduce((a,t) => a + Number(t.c||0), 0);
-    el.innerHTML = `
-      <div class="kpi"><div class="val">${totalTables}</div><div class="lbl">Tables</div></div>
-      <div class="kpi"><div class="val">${totalCouverts}</div><div class="lbl">Couverts (capacité totale)</div></div>
-      <div class="kpi good"><div class="val">${placesDispo}</div><div class="lbl">Places disponibles maintenant</div></div>
-    `;
-  }
-
-  function renderSalle(){
-    const resto = currentResto || 'Perpignan';
-    const tables = tablesFor(resto);
-    const today = todayLocal();
-    const list = loadReservations().filter(r => r.restaurant === resto && r.date === today && r.statut !== 'annulee');
-
-    const html = tables.map(t => {
-      const r = list.find(x => x.tableNum === t.n);
-      let cls = 't-libre', label = 'libre';
-      if (r) {
-        if (['installee','commande_prise'].includes(r.statut)) { cls='t-occupee'; label='occupée'; }
-        else if (r.statut === 'arrivee') { cls='t-arrive'; label='arrivé'; }
-        else if (['nouvelle','confirmee','rappelee'].includes(r.statut)) { cls='t-reservee'; label=r.heure; }
-        else if (r.statut === 'a_nettoyer') { cls='t-nettoyage'; label='nettoyage'; }
-      }
-      return `<div class="table-cell ${cls}"><span class="num">${t.n}</span>${t.c}p · ${label}</div>`;
-    }).join('');
-
-    ['salleGrid','salleGrid2'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = html;
-    });
   }
 
   function renderWaitlist(){
@@ -1457,7 +1268,7 @@
         <div class="agenda-time"><div class="hh">${h}h${m}</div></div>
         <div class="agenda-body">
           <div class="who">${r.prenom||''} ${r.nom||''}</div>
-          <div class="what">${r.pax} pers. · ${r.restaurant}${r.tableNum ? ' · '+r.tableNum : ''}</div>
+          <div class="what">${r.pax} pers. · ${r.restaurant}</div>
         </div>
       </div>`;
     }).join('');
@@ -1545,9 +1356,6 @@
     renderKpis();
     renderForecast();
     renderPlanning();
-    renderSalle();
-    renderPlanNote();
-    renderPlanStats();
     renderWaitlist();
     renderAgenda();
     renderRetards();
@@ -2015,52 +1823,6 @@
 
   document.getElementById('clientSearch').addEventListener('input', (e) => renderClients(e.target.value));
 
-  // Import du plan de salle
-  function openImportPlanModal(){
-    if (!currentResto) { alert('Choisis un restaurant (Perpignan ou Montpellier) avant d\'importer un plan de salle — pas de plan unique en vue globale.'); return; }
-    document.getElementById('importPlanResto').textContent = currentResto;
-    document.getElementById('importPlanText').value = '';
-    document.getElementById('importPlanFile').value = '';
-    document.getElementById('importPlanError').style.display = 'none';
-    document.getElementById('importPlanModal').classList.add('active');
-  }
-  document.getElementById('importPlanBtn').addEventListener('click', openImportPlanModal);
-  document.getElementById('importPlanBtn2').addEventListener('click', openImportPlanModal);
-  document.getElementById('importPlanModalClose').addEventListener('click', () => {
-    document.getElementById('importPlanModal').classList.remove('active');
-  });
-
-  let importedFileName = null;
-  document.getElementById('importPlanFile').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    importedFileName = file.name;
-    const reader = new FileReader();
-    reader.onload = (ev) => { document.getElementById('importPlanText').value = ev.target.result; };
-    reader.readAsText(file);
-  });
-
-  document.getElementById('importPlanSubmit').addEventListener('click', () => {
-    const errEl = document.getElementById('importPlanError');
-    const text = document.getElementById('importPlanText').value;
-    if (!text.trim()) { errEl.textContent = 'Colle une liste de tables ou choisis un fichier.'; errEl.style.display = 'block'; return; }
-    const { tables, errors } = parsePlanText(text);
-    if (tables.length === 0) {
-      errEl.textContent = errors.length ? errors.join(' · ') : 'Aucune table valide trouvée.';
-      errEl.style.display = 'block';
-      return;
-    }
-    const cfg = loadTablesConfig();
-    cfg[currentResto] = tables;
-    saveTablesConfig(cfg);
-    const meta = loadPlanMeta();
-    meta[currentResto] = { importedAt: new Date().toISOString(), fileName: importedFileName };
-    savePlanMeta(meta);
-    importedFileName = null;
-    document.getElementById('importPlanModal').classList.remove('active');
-    renderAll();
-  });
-
   document.getElementById('zeltyToggle').addEventListener('change', (e) => {
     const integ = loadIntegrations();
     integ.zelty = { actif: e.target.checked, modifieLe: new Date().toISOString() };
@@ -2075,7 +1837,7 @@
     boSync.init({
       storeKey: STORE_KEY,
       pauseKey: PAUSE_KEY,
-      reglageKeys: [TABLES_KEY, WAIT_KEY, PLAN_META_KEY, INTEG_KEY],
+      reglageKeys: [WAIT_KEY, INTEG_KEY],
       onChange: renderAll
     });
   });
