@@ -837,6 +837,8 @@
     return null;
   }
 
+  const SLUG_TO_RESTO = { perpignan:'Perpignan', montpellier:'Montpellier' };
+
   function appliquerRole(){
     if (!currentStaff) return;
     const estAdmin = currentStaff.role === 'admin';
@@ -845,6 +847,13 @@
     const badge = document.getElementById('staffBadge');
     if (badge) {
       badge.textContent = `${currentStaff.email} · ${ROLE_LABELS[currentStaff.role] || currentStaff.role}`;
+    }
+    const switcher = document.getElementById('accSwitch');
+    if (!estAdmin && currentStaff.restaurant_slug) {
+      currentResto = SLUG_TO_RESTO[currentStaff.restaurant_slug] || currentStaff.restaurant_slug;
+      if (switcher) switcher.style.display = 'none';
+    } else {
+      if (switcher) switcher.style.display = '';
     }
   }
 
