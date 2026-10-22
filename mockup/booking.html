@@ -146,7 +146,8 @@
         <div class="row">
           <div class="field">
             <label>Restaurant</label>
-            <select id="restaurant">
+            <select id="restaurant" required>
+              <option value="" disabled selected>Choisis ton restaurant</option>
               <option value="Perpignan">Perpignan</option>
               <option value="Montpellier">Montpellier</option>
             </select>
@@ -177,7 +178,7 @@
           <div id="slotsEmpty" style="display:none;font-size:12px;color:var(--muted);margin-top:6px;">Aucun créneau disponible pour ce choix — essaie une autre date ou un autre service.</div>
         </div>
 
-        <button type="button" id="toStep2" class="submit">Continuer</button>
+        <button type="button" id="toStep2" class="submit" disabled>Continuer</button>
       </div>
 
       <div id="step2" style="display:none;">
@@ -354,18 +355,25 @@
     const resto = document.getElementById('restaurant').value;
     const dateStr = document.getElementById('date').value;
     const service = document.getElementById('service').value;
-    const creneaux = genererCreneaux(resto, dateStr, service);
     const container = document.getElementById('slots');
     const vide = document.getElementById('slotsEmpty');
     container.innerHTML = '';
 
+    if (!resto) {
+      vide.style.display = 'none';
+      document.getElementById('toStep2').disabled = true;
+      return;
+    }
+
+    const creneaux = genererCreneaux(resto, dateStr, service);
+
     if (creneaux.length === 0) {
       vide.style.display = 'block';
-      document.querySelector('.submit').disabled = true;
+      document.getElementById('toStep2').disabled = true;
       return;
     }
     vide.style.display = 'none';
-    if (!isPaused(resto)) document.querySelector('.submit').disabled = false;
+    if (!isPaused(resto)) document.getElementById('toStep2').disabled = false;
 
     creneaux.forEach((t, i) => {
       const el = document.createElement('div');
@@ -444,7 +452,7 @@
     const directSource = urlParams.get('source');
     if (directResto || directSource) {
       activeLink = {
-        restaurant: directResto || 'Perpignan',
+        restaurant: directResto || null,
         source: directSource || 'site',
         label: directSource || 'Lien direct'
       };
@@ -471,10 +479,13 @@
 
   async function checkPause(){
     const resto = document.getElementById('restaurant').value;
-    const slug = RESTO_SLUGS[resto];
     const existing = document.getElementById('pauseNotice');
     if (existing) existing.remove();
-    document.querySelector('.submit').disabled = false;
+
+    if (!resto) return;
+
+    const slug = RESTO_SLUGS[resto];
+    document.getElementById('toStep2').disabled = false;
 
     try {
       const data = await pbApi(`/api/fricaccia/pause/${slug}`);
@@ -487,7 +498,7 @@
       notice.style.cssText = 'background:#FCE2E3;border:1px solid var(--sugo);color:var(--sugo);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;text-align:center;';
       notice.textContent = `Réservations en ligne temporairement suspendues pour ${resto}. Merci d'appeler le restaurant.`;
       document.querySelector('.card').prepend(notice);
-      document.querySelector('.submit').disabled = true;
+      document.getElementById('toStep2').disabled = true;
     }
   }
   document.getElementById('restaurant').addEventListener('change', checkPause);
