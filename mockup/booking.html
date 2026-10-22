@@ -103,18 +103,17 @@
   .step2-top h3{margin:0;font-size:20px;font-weight:800;}
 
   .step2-grid{display:grid;grid-template-columns:1fr 260px;gap:28px;align-items:start;}
-  @media (max-width:700px){ .step2-grid{grid-template-columns:1fr;} .step2-summary{order:-1;} }
 
-  .civilite-group{display:flex;gap:18px;margin-bottom:18px;}
+  .civilite-group{display:flex;gap:18px;margin-bottom:18px;flex-wrap:wrap;}
   .civilite-opt{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;}
   .civilite-opt input{width:auto;}
 
   .phone-input{display:flex;gap:8px;}
   .phone-prefix{flex:0 0 auto;display:flex;align-items:center;gap:4px;background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:14px;color:var(--muted);}
-  .phone-input input{flex:1;}
+  .phone-input input{flex:1;min-width:0;}
 
   .check-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;}
-  .check-row input{width:auto;margin-top:3px;}
+  .check-row input{width:auto;margin-top:3px;flex-shrink:0;}
   .check-row label{margin:0;font-size:12px;color:var(--muted);font-weight:400;}
   .check-row.required label{color:var(--char);}
   .check-row .req{color:var(--sugo);}
@@ -125,6 +124,22 @@
   .summary-card .summary-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-weight:800;font-size:14px;}
   .summary-card .summary-head a{color:var(--sugo);font-size:12px;font-weight:700;text-decoration:none;}
   .summary-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;color:var(--char);}
+
+  @media (max-width:600px){
+    main{padding:0 16px;margin:24px auto;}
+    .hero h2{font-size:22px;}
+    .card{padding:18px 16px;}
+    .row{grid-template-columns:1fr;gap:8px;}
+    .slots{grid-template-columns:repeat(3,1fr);}
+    .step2-grid{grid-template-columns:1fr;}
+    .step2-summary{order:-1;}
+    .summary-card{position:static;}
+    .civilite-group{gap:12px;}
+    .phone-input{flex-direction:column;gap:6px;}
+    .phone-prefix{justify-content:center;padding:8px 10px;}
+    .phone-input input{width:100%;}
+    .note-tags{gap:6px;}
+  }
 </style>
 </head>
 <body>
