@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fricaccia — Réserver une table</title>
+<title>Fricaccia — Réserver</title>
 <!-- Reserve-a-table markup : aide Google (Search/Maps) à faire remonter ce lien comme bouton
      "Réserver" une fois le lien GBP renseigné manuellement (Google Business Profile → Infos →
      Liens → Réservations). Adresses à compléter (non fabriquées ici, pas de source locale). -->
@@ -135,7 +135,7 @@
 
 <main>
   <div class="hero">
-    <h2>Réserver une table</h2>
+    <h2>Réserver</h2>
     <p>Montpellier ou Perpignan, confirmation immédiate par email</p>
   </div>
 
@@ -286,9 +286,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="assets/js/firebase-config.js"></script>
 <script>
-  document.getElementById('date').valueAsDate = new Date();
+  const dateInput = document.getElementById('date');
+  dateInput.valueAsDate = new Date();
+  dateInput.min = new Date().toISOString().split('T')[0];
 
-  // Jusqu'à 25 personnes — au-delà, groupe à gérer par tél (pas de plan de salle 26+)
+  // Jusqu'à 25 personnes — au-delà, groupe à gérer par tél
   const PAX_MAX = 25;
   const paxSelect = document.getElementById('pax');
   for (let n = 1; n <= PAX_MAX; n++) {
