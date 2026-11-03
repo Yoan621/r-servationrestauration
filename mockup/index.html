@@ -415,6 +415,39 @@
   @media (max-width:420px){
     .team-chip{display:none;} /* logo déjà dans la page, place gagnée pour le nom du resto */
   }
+
+  /* ===== Refonte visuelle (inspiration Dashboard v14) : cartes flottantes, ombres douces, hero ===== */
+  main{padding:28px 32px;}
+  header{background:rgba(255,255,255,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:40;border-bottom:1px solid var(--border);}
+  .card{border:none;border-radius:18px;padding:22px;box-shadow:0 1px 2px rgba(80,50,20,.04),0 8px 24px rgba(80,50,20,.06);}
+  .card h2{font-size:17px;letter-spacing:.1px;}
+  .kpi{position:relative;border:none;border-radius:18px;padding:18px 18px 16px;box-shadow:0 1px 2px rgba(80,50,20,.04),0 8px 24px rgba(80,50,20,.06);transition:transform .15s,box-shadow .15s;}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(80,50,20,.05),0 14px 30px rgba(80,50,20,.10);}
+  .kpi .ico{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:11px;background:var(--paper);color:var(--sugo);margin-bottom:12px;}
+  .kpi .ico .material-icons{font-size:19px;}
+  .kpi.warn .ico{background:#FDF3D6;color:#B8860B;}
+  .kpi.good .ico{background:#E6F4E1;color:var(--basil);}
+  .kpi.bad .ico{background:#FCE2E3;color:var(--sugo);}
+  .kpi .val{font-size:30px;line-height:1.1;}
+  .kpi .lbl{font-size:12.5px;margin-top:4px;}
+  .hero{position:relative;overflow:hidden;border-radius:22px;padding:26px 30px;margin-bottom:22px;color:#fff;
+    background:radial-gradient(900px 260px at 95% -20%,rgba(235,177,37,.55),transparent 60%),linear-gradient(120deg,#8E1016 0%,#C3171F 55%,#E2452B 100%);
+    box-shadow:0 14px 34px rgba(195,23,31,.28);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .hero::after{content:'';position:absolute;right:-60px;bottom:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .hero h1{margin:0 0 6px;font-size:28px;font-weight:800;font-family:'Aloevera',sans-serif;}
+  .hero h1 span{font-weight:500;opacity:.85;}
+  .hero p{margin:0;font-size:14px;opacity:.9;}
+  .hero-stats{display:flex;gap:12px;position:relative;z-index:1;}
+  .hero-stat{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:10px 16px;min-width:92px;text-align:center;backdrop-filter:blur(4px);}
+  .hero-stat b{display:block;font-size:22px;font-weight:800;}
+  .hero-stat small{font-size:11.5px;opacity:.9;}
+  table th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
+  table tr[data-id]:hover td,.client-row:hover{background:#FFFAF4;}
+  .client-row{border-radius:14px;transition:background .12s;}
+  .btn-mini,.advance-btn,.noshow-btn,.done-btn{border-radius:20px !important;}
+  .done-btn{background:#fff;border:1px solid var(--border);padding:5px 10px;font-size:12px;cursor:pointer;font-weight:700;color:var(--basil);font-family:'Aloevera',sans-serif;}
+  .done-btn:hover{background:var(--basil);color:#fff;border-color:var(--basil);}
+  @media (max-width:900px){ main{padding:18px 14px;} .hero{padding:20px;} .hero h1{font-size:22px;} }
 </style>
 </head>
 <body>
@@ -459,7 +492,7 @@
       </li>
       <li class="sidebar-menu-item">
         <a class="sidebar-menu-button tab-btn" data-view="stats" href="#">
-          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">query_stats</span>
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">bar_chart</span>
           <span class="sidebar-menu-text">Dashboard clients</span>
         </a>
       </li>
@@ -544,6 +577,13 @@
     <main>
 
   <div class="view active" id="view-dashboard">
+  <div class="hero">
+    <div>
+      <h1 id="heroTitle">Bonjour <span>👋</span></h1>
+      <p id="heroSub"></p>
+    </div>
+    <div class="hero-stats" id="heroStats"></div>
+  </div>
   <div class="kpis" id="kpisRow"></div>
 
   <div class="grid2">
@@ -555,11 +595,18 @@
 
       <div class="card">
         <div class="card-head">
-          <h2 style="margin:0;">Planning du jour</h2>
+          <h2 style="margin:0;" id="planTitle">Planning du jour</h2>
           <div style="display:flex;gap:10px;align-items:center;">
             <label class="pause-toggle"><input type="checkbox" id="pauseToggle"> Pause réservations</label>
             <button class="btn-mini" id="newResaBtn">+ Réservation manuelle</button>
           </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn-mini" id="planPrev" title="Jour précédent">‹</button>
+          <input type="date" id="planDate" class="pax-select">
+          <button class="btn-mini" id="planNext" title="Jour suivant">›</button>
+          <button class="btn-mini" id="planToday">Aujourd'hui</button>
+          <button class="btn-mini" id="planAllDone" style="margin-left:auto;">✓ Tout marquer terminé</button>
         </div>
         <div id="planningTable"></div>
       </div>
@@ -1167,13 +1214,23 @@
     }).length;
     const wait = loadWaitlist().filter(w => !currentResto || w.restaurant === currentResto);
 
+    const ico = n => `<div class="ico"><span class="material-icons">${n}</span></div>`;
     document.getElementById('kpisRow').innerHTML = `
-      <div class="kpi"><div class="val">${list.length}</div><div class="lbl">Réservations du jour</div></div>
-      <div class="kpi warn"><div class="val">${attendus}</div><div class="lbl">Clients attendus</div></div>
-      <div class="kpi good"><div class="val">${installes}</div><div class="lbl">Clients installés</div></div>
-      <div class="kpi bad"><div class="val">${retards}</div><div class="lbl">Retards</div></div>
-      <div class="kpi"><div class="val">${wait.length}</div><div class="lbl">Liste d'attente</div></div>
+      <div class="kpi">${ico('event_note')}<div class="val">${list.length}</div><div class="lbl">Réservations du jour</div></div>
+      <div class="kpi warn">${ico('schedule')}<div class="val">${attendus}</div><div class="lbl">Clients attendus</div></div>
+      <div class="kpi good">${ico('restaurant')}<div class="val">${installes}</div><div class="lbl">Clients installés</div></div>
+      <div class="kpi bad">${ico('warning')}<div class="val">${retards}</div><div class="lbl">Retards</div></div>
+      <div class="kpi">${ico('hourglass_empty')}<div class="val">${wait.length}</div><div class="lbl">Liste d'attente</div></div>
     `;
+    const couvertsJour = list.reduce((a, r) => a + (Number(r.pax) || 0), 0);
+    const h = new Date().getHours();
+    const prenom = (currentStaff && currentStaff.email ? currentStaff.email.split('@')[0] : '');
+    document.getElementById('heroTitle').innerHTML = `${h < 18 ? 'Bonjour' : 'Bonsoir'} <span>${prenom ? '· ' + prenom : '👋'}</span>`;
+    document.getElementById('heroSub').textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' · ' + (currentResto || 'Tous les restaurants');
+    document.getElementById('heroStats').innerHTML = `
+      <div class="hero-stat"><b>${list.length}</b><small>réservations</small></div>
+      <div class="hero-stat"><b>${couvertsJour}</b><small>couverts</small></div>
+      <div class="hero-stat"><b>${attendus}</b><small>à venir</small></div>`;
   }
 
   function renderForecast(){
@@ -1192,23 +1249,57 @@
     }).join('');
   }
 
+  let planningDate = '';
+  function decaleJour(n){
+    const [y,m,d] = (planningDate || todayLocal()).split('-').map(Number);
+    const dt = new Date(y, m-1, d+n);
+    planningDate = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    renderPlanning();
+  }
+  document.getElementById('planPrev').addEventListener('click', () => decaleJour(-1));
+  document.getElementById('planNext').addEventListener('click', () => decaleJour(1));
+  document.getElementById('planToday').addEventListener('click', () => { planningDate = ''; renderPlanning(); });
+  document.getElementById('planDate').addEventListener('change', e => { planningDate = e.target.value; renderPlanning(); });
+  (function(){
+    const b = document.getElementById('planAllDone'); let armed = null;
+    b.addEventListener('click', () => {
+      const jour = planningDate || todayLocal();
+      const ids = filteredReservations().filter(r => r.date === jour && !['annulee','terminee','no_show'].includes(r.statut)).map(r => r.id);
+      if (!ids.length) return;
+      if (!armed) {
+        b.textContent = `Confirmer (${ids.length}) ?`;
+        armed = setTimeout(() => { armed = null; b.textContent = '✓ Tout marquer terminé'; }, 3000);
+        return;
+      }
+      clearTimeout(armed); armed = null; b.textContent = '✓ Tout marquer terminé';
+      const list = loadReservations();
+      list.forEach(r => { if (ids.includes(r.id)) r.statut = 'terminee'; });
+      saveReservations(list); renderAll();
+    });
+  })();
+
   function renderPlanning(){
-    const list = filteredReservations().filter(r => r.date === todayLocal() && r.statut !== 'annulee')
+    const jour = planningDate || todayLocal();
+    const estAujourdhui = jour === todayLocal();
+    const list = filteredReservations().filter(r => r.date === jour && r.statut !== 'annulee')
       .sort((a,b) => a.heure.localeCompare(b.heure));
     const el = document.getElementById('planningTable');
+    document.getElementById('planDate').value = jour;
+    document.getElementById('planTitle').textContent = estAujourdhui ? 'Planning du jour' : 'Planning du ' + jour.split('-').reverse().join('/');
+    document.getElementById('planAllDone').style.display = list.some(r => !['terminee','no_show'].includes(r.statut)) ? '' : 'none';
 
     const pauses = loadPauses();
     document.getElementById('pauseToggle').checked = currentResto ? !!pauses[currentResto] : false;
     document.getElementById('pauseToggle').disabled = !currentResto;
 
     if (list.length === 0) {
-      el.innerHTML = '<div class="empty">Aucune réservation aujourd\'hui. Crée-en une via "+ Réservation manuelle" ou le <a href="booking.html" style="color:var(--accent);">widget</a>.</div>';
+      el.innerHTML = '<div class="empty">Aucune réservation ce jour-là. Crée-en une via "+ Réservation manuelle" ou le <a href="booking.html" style="color:var(--accent);">widget</a>.</div>';
       return;
     }
     el.innerHTML = `<table>
       <tr><th>Heure</th><th>Client</th><th>Pers.</th><th>Statut</th><th>Actions</th></tr>
       ${list.map(r => {
-        const isRetard = ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r);
+        const isRetard = estAujourdhui && ['nouvelle','confirmee','rappelee'].includes(r.statut) && isLate(r);
         return `<tr data-id="${r.id}">
           <td>${r.heure}${isRetard ? ' <span class="retard-badge">⚠</span>' : ''}</td>
           <td>
@@ -1219,6 +1310,7 @@
           <td><span class="status-pill s-${r.statut}">${STATUT_LABELS[r.statut]||r.statut}</span></td>
           <td class="actions">
             ${r.statut !== 'annulee' && r.statut !== 'terminee' ? `<button class="advance-btn">${STATUT_LABELS[nextStatut(r.statut)] || 'Avancer'}</button>` : ''}
+            ${!['annulee','terminee','no_show'].includes(r.statut) && r.statut !== nextStatut(r.statut) && nextStatut(r.statut) !== 'terminee' ? '<button class="done-btn">✓ Terminée</button>' : ''}
             ${!['annulee','no_show','terminee'].includes(r.statut) ? '<button class="noshow-btn">No-show</button>' : ''}
             ${['arrivee','installee','commande_prise','terminee'].includes(r.statut) ? `<button class="btn-avis-planning" title="Envoyer demande d'avis Google">⭐ Avis</button>` : ''}
           </td>
@@ -1230,6 +1322,8 @@
       const id = row.dataset.id;
       const advBtn = row.querySelector('.advance-btn');
       if (advBtn) advBtn.addEventListener('click', () => updateReservation(id, r => r.statut = nextStatut(r.statut)));
+      const doneBtn = row.querySelector('.done-btn');
+      if (doneBtn) doneBtn.addEventListener('click', () => updateReservation(id, r => r.statut = 'terminee'));
       const noBtn = row.querySelector('.noshow-btn');
       if (noBtn) noBtn.addEventListener('click', () => updateReservation(id, r => r.statut = 'no_show'));
       const avisBtn = row.querySelector('.btn-avis-planning');
