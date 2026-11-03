@@ -448,6 +448,37 @@
   .done-btn{background:#fff;border:1px solid var(--border);padding:5px 10px;font-size:12px;cursor:pointer;font-weight:700;color:var(--basil);font-family:'Aloevera',sans-serif;}
   .done-btn:hover{background:var(--basil);color:#fff;border-color:var(--basil);}
   @media (max-width:900px){ main{padding:18px 14px;} .hero{padding:20px;} .hero h1{font-size:22px;} }
+
+  /* ===== Sidebar v14 : marque en haut, pastilles d'icônes, actif en panneau lumineux, déconnexion en bas ===== */
+  aside#appSidebar{background:linear-gradient(180deg,#201C1A 0%,#151210 100%) !important;color:rgba(255,247,239,.62);border-right:1px solid rgba(255,255,255,.04);}
+  aside#appSidebar .sidebar-brand{justify-content:space-between;gap:10px;height:76px;padding:0 16px 0 20px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:8px;}
+  .brand-id{display:flex;align-items:center;gap:11px;min-width:0;}
+  .brand-id img{width:38px;height:38px;border-radius:12px;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.08);flex-shrink:0;}
+  .brand-id b{display:block;color:#fff;font-size:16px;font-weight:800;letter-spacing:.2px;line-height:1.1;font-family:'Aloevera',sans-serif;}
+  .brand-id small{display:block;color:rgba(255,247,239,.45);font-size:11px;letter-spacing:.8px;text-transform:uppercase;margin-top:3px;}
+  aside#appSidebar .sidebar-heading{color:rgba(255,247,239,.32);font-size:10.5px;letter-spacing:1.2px;padding:18px 26px 8px;border:none;}
+  aside#appSidebar .sidebar-menu{padding:0 12px;}
+  aside#appSidebar .sidebar-menu-item{margin-bottom:4px;}
+  aside#appSidebar .sidebar-menu-button{position:relative;gap:13px;padding:8px 10px;border-radius:14px;font-size:14px;font-weight:600;color:rgba(255,247,239,.66);background:transparent;box-shadow:none;}
+  aside#appSidebar .sidebar-menu-button .sidebar-menu-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;font-size:19px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,247,239,.7);flex-shrink:0;}
+  aside#appSidebar .sidebar-menu-item:not(.active)>.sidebar-menu-button:not(.disabled):hover{background:rgba(255,255,255,.06);color:#fff;transform:none;}
+  aside#appSidebar .sidebar-menu-item:not(.active)>.sidebar-menu-button:not(.disabled):hover .sidebar-menu-icon{background:rgba(255,255,255,.1);color:#fff;transform:none;}
+  aside#appSidebar .sidebar-menu-item.active>.sidebar-menu-button{background:linear-gradient(90deg,rgba(195,23,31,.28) 0%,rgba(255,255,255,.07) 100%);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}
+  aside#appSidebar .sidebar-menu-item.active>.sidebar-menu-button::before{content:'';position:absolute;left:-12px;top:20%;height:60%;width:4px;border-radius:0 4px 4px 0;background:var(--sugo);box-shadow:0 0 12px rgba(195,23,31,.9);}
+  aside#appSidebar .sidebar-menu-item.active>.sidebar-menu-button .sidebar-menu-icon{background:linear-gradient(135deg,#E2452B,#C3171F);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(195,23,31,.45);}
+  .sidebar-foot{margin-top:auto;padding:14px 12px 18px;border-top:1px solid rgba(255,255,255,.06);}
+  .sidebar-foot button{width:100%;display:flex;align-items:center;gap:13px;padding:8px 10px;border-radius:14px;background:transparent;border:none;color:rgba(255,247,239,.66);font-size:14px;font-weight:600;cursor:pointer;font-family:'Aloevera',sans-serif;}
+  .sidebar-foot button:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .sidebar-foot .material-icons{display:flex;align-items:center;justify-content:center;width:36px;height:36px;font-size:19px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);}
+  aside#appSidebar .sidebar-heading:last-of-type{margin-top:12px;border-top:none;padding-top:18px;}
+  @media (min-width:901px){
+    aside#appSidebar.collapsed .sidebar-brand{padding:0;justify-content:center;}
+    aside#appSidebar.collapsed .brand-id{display:none;}
+    aside#appSidebar.collapsed .sidebar-menu-button{padding:8px 0;justify-content:center;}
+    aside#appSidebar.collapsed .sidebar-menu-item.active>.sidebar-menu-button::before{left:-8px;}
+    aside#appSidebar.collapsed .sidebar-foot button span:last-child{display:none;}
+    aside#appSidebar.collapsed .sidebar-foot button{justify-content:center;padding:8px 0;}
+  }
 </style>
 </head>
 <body>
@@ -471,6 +502,7 @@
 
   <aside class="sidebar sidebar-dark sidebar-left" id="appSidebar">
     <div class="sidebar-brand">
+      <div class="brand-id"><img src="assets/images/logo-fricaccia.jpg" alt=""><div><b>Fricaccia</b><small>Réservation</small></div></div>
       <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Réduire le menu">
         <span class="material-icons">chevron_left</span>
       </button>
@@ -519,6 +551,9 @@
         </a>
       </li>
     </ul>
+    <div class="sidebar-foot">
+      <button type="button" id="sidebarLogout"><span class="material-icons">logout</span><span>Se déconnecter</span></button>
+    </div>
   </aside>
 
   <div class="main-area">
@@ -669,7 +704,7 @@
           <option value="Montpellier">Montpellier</option>
         </select>
       </div>
-      <div class="kpis" id="statsKpis" style="grid-template-columns:repeat(4,1fr);"></div>
+      <div class="kpis" id="statsKpis" style="grid-template-columns:repeat(5,1fr);"></div>
     </div>
     <div class="card">
       <h2>Par restaurant</h2>
@@ -680,7 +715,7 @@
       <p class="note" style="margin:0 0 10px;">Le mail part le lendemain d'une réservation passée au statut « Terminée » (avec e-mail). Si la salle ne clôture pas la table, aucun mail ne part.</p>
       <div id="statsAvis"></div>
     </div>
-    <p class="note">Hors réservations annulées. Couvert = personne attablée (champ « pers. » de la réservation).</p>
+    <p class="note">Clients, couverts et mails hors réservations annulées ; le taux d'annulation = annulées / toutes les réservations. Couvert = personne attablée (champ « pers. » de la réservation).</p>
   </div>
 
   <div class="view" id="view-links">
@@ -1002,7 +1037,8 @@
     }
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', async function(){
+  document.getElementById('sidebarLogout').addEventListener('click', () => document.getElementById('logoutBtn').click());
+document.getElementById('logoutBtn').addEventListener('click', async function(){
     if (!fbAuth) return;
     currentStaff = null;
     await fbAuth.signOut();
@@ -1855,7 +1891,11 @@
     const terminees = valides.filter(r => r.statut === 'terminee');
     const eligibles = terminees.filter(r => r.email);
     const envoyes = eligibles.filter(r => r.avisEnvoyeLe);
+    const annulees = resas.filter(r => r.statut === 'annulee').length;
+    const noShows = valides.filter(r => r.statut === 'no_show').length;
     return {
+      annulees, noShows, total: resas.length,
+      tauxAnnul: resas.length ? annulees / resas.length * 100 : 0,
       nbResas: valides.length, couverts, nbClients, revenus,
       paxParResa: valides.length ? couverts / valides.length : 0,
       couvertsParClient: nbClients ? couverts / nbClients : 0,
@@ -1877,13 +1917,15 @@
       <div class="kpi"><div class="val">${fmt1(s.couvertsParClient)}</div><div class="lbl">Couverts moyens / client (${s.couverts} au total)</div></div>
       <div class="kpi"><div class="val">${s.nbResas}</div><div class="lbl">Réservations</div></div>
       <div class="kpi"><div class="val">${s.terminees}</div><div class="lbl">Terminées</div></div>
+      <div class="kpi bad"><div class="val">${s.annulees}</div><div class="lbl">Annulations (${fmt1(s.tauxAnnul)} % des ${s.total} résas)</div></div>
+      <div class="kpi warn"><div class="val">${s.noShows}</div><div class="lbl">No-shows</div></div>
       <div class="kpi good"><div class="val">${s.envoyes}</div><div class="lbl">Ont reçu le mail d'avis</div></div>
       <div class="kpi ${s.eligibles - s.envoyes > 0 ? 'bad' : ''}"><div class="val">${fmt1(s.tauxAvis)} %</div><div class="lbl">Taux d'envoi (${s.envoyes}/${s.eligibles} éligibles)</div></div>`;
 
     const lignes = ['Perpignan', 'Montpellier'].map(n => ({ n, s: statsDe(all.filter(r => r.restaurant === n)) }));
     document.getElementById('statsByResto').innerHTML = `
-      <table><thead><tr><th>Restaurant</th><th>Clients</th><th>Résas</th><th>Couverts</th><th>Couverts / résa</th><th>Reviennent</th><th>Mails avis</th></tr></thead><tbody>
-      ${lignes.map(l => `<tr><td>${l.n}</td><td>${l.s.nbClients}</td><td>${l.s.nbResas}</td><td>${l.s.couverts}</td><td>${fmt1(l.s.paxParResa)}</td><td>${fmt1(l.s.tauxRetour)} %</td><td>${l.s.envoyes}/${l.s.eligibles}</td></tr>`).join('')}
+      <table><thead><tr><th>Restaurant</th><th>Clients</th><th>Résas</th><th>Couverts</th><th>Couverts / résa</th><th>Annulations</th><th>Reviennent</th><th>Mails avis</th></tr></thead><tbody>
+      ${lignes.map(l => `<tr><td>${l.n}</td><td>${l.s.nbClients}</td><td>${l.s.nbResas}</td><td>${l.s.couverts}</td><td>${fmt1(l.s.paxParResa)}</td><td>${l.s.annulees} (${fmt1(l.s.tauxAnnul)} %)</td><td>${fmt1(l.s.tauxRetour)} %</td><td>${l.s.envoyes}/${l.s.eligibles}</td></tr>`).join('')}
       </tbody></table>`;
 
     const envoyes = all.filter(r => (!resto || r.restaurant === resto) && r.avisEnvoyeLe)
