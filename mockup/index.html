@@ -458,6 +458,12 @@
         </a>
       </li>
       <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="stats" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">query_stats</span>
+          <span class="sidebar-menu-text">Dashboard clients</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
         <a class="sidebar-menu-button tab-btn" data-view="links" href="#">
           <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">link</span>
           <span class="sidebar-menu-text">Liens de réservation</span>
@@ -593,10 +599,41 @@
         <h2 style="margin:0;">Fiches clients</h2>
         <button class="btn-mini" id="exportZeltyBtn" style="background:var(--char);color:#fff;border:none;padding:7px 12px;border-radius:6px;font-size:12px;cursor:pointer;">📥 Exporter format Zelty (CSV)</button>
       </div>
-      <input type="text" class="search" id="clientSearch" placeholder="Rechercher par nom, email ou téléphone...">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <input type="text" class="search" id="clientSearch" placeholder="Rechercher par nom, email ou téléphone..." style="margin:0;">
+        <select id="clientRestoFilter" class="pax-select" title="Filtrer par restaurant">
+          <option value="">Tous les restaurants</option>
+          <option value="Perpignan">Perpignan</option>
+          <option value="Montpellier">Montpellier</option>
+        </select>
+      </div>
       <div id="clientList"></div>
     </div>
     <p class="note">Fiches clients synchronisées en temps réel. Données prêtes à être exportées ou vérifiées directement avec la caisse Zelty.</p>
+  </div>
+
+  <div class="view" id="view-stats">
+    <div class="card">
+      <div class="card-head">
+        <h2 style="margin:0;">Dashboard clients</h2>
+        <select id="statsRestoFilter" class="pax-select" title="Restaurant">
+          <option value="">Tous les restaurants</option>
+          <option value="Perpignan">Perpignan</option>
+          <option value="Montpellier">Montpellier</option>
+        </select>
+      </div>
+      <div class="kpis" id="statsKpis" style="grid-template-columns:repeat(4,1fr);"></div>
+    </div>
+    <div class="card">
+      <h2>Par restaurant</h2>
+      <div id="statsByResto"></div>
+    </div>
+    <div class="card">
+      <h2>Mail d'avis Google (J+1)</h2>
+      <p class="note" style="margin:0 0 10px;">Le mail part le lendemain d'une réservation passée au statut « Terminée » (avec e-mail). Si la salle ne clôture pas la table, aucun mail ne part.</p>
+      <div id="statsAvis"></div>
+    </div>
+    <p class="note">Hors réservations annulées. Couvert = personne attablée (champ « pers. » de la réservation).</p>
   </div>
 
   <div class="view" id="view-links">
@@ -1371,6 +1408,7 @@
     renderRetards();
     renderBell();
     renderIntegration();
+    if (document.getElementById('view-stats').classList.contains('active')) renderStats();
   }
 
   // Switch de compte (façon Instagram : avatar + menu déroulant des comptes)
@@ -1496,6 +1534,7 @@
       if (li) li.classList.add('active');
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
       if (btn.dataset.view === 'clients') renderClients();
+      if (btn.dataset.view === 'stats') renderStats();
       if (btn.dataset.view === 'links') renderLinks();
       if (btn.dataset.view === 'acces') renderAcces();
       if (window.innerWidth <= 900) document.getElementById('appSidebar').classList.add('mobile-hidden');
@@ -1616,8 +1655,8 @@
     return ((prenom||'?')[0] + (nom||'?')[0]).toUpperCase();
   }
 
-  function buildClients(){
-    const res = loadReservations();
+  function buildClients(resto){
+    const res = loadReservations().filter(r => !resto || r.restaurant === resto);
     const map = {};
     res.forEach(r => {
       const key = (r.email || r.tel || '').toLowerCase();
@@ -1665,7 +1704,9 @@
 
   function renderClients(filter){
     const listEl = document.getElementById('clientList');
-    let clients = buildClients();
+    const restoFilter = document.getElementById('clientRestoFilter').value;
+    let clients = buildClients(restoFilter);
+    if (filter === undefined) filter = document.getElementById('clientSearch').value;
     if (filter) {
       const f = filter.toLowerCase();
       clients = clients.filter(c =>
@@ -1681,14 +1722,19 @@
     }
     listEl.innerHTML = clients.map((c, i) => {
       const fid = clientFidelite(c.historique.length);
+      const restos = [...new Set(c.historique.map(r => r.restaurant).filter(Boolean))].join(' + ');
+      const avisRecu = c.historique.some(r => r.avisEnvoyeLe);
+      const pax = c.historique.filter(r => r.statut !== 'annulee').map(r => Number(r.pax) || 0);
+      const paxMoy = pax.length ? (pax.reduce((a, b) => a + b, 0) / pax.length).toFixed(1).replace('.', ',') : '—';
       return `
       <div class="client-row" data-idx="${i}">
         <div class="avatar">${initials(c.prenom, c.nom)}</div>
         <div class="client-info">
           <div class="name">${c.prenom || ''} ${c.nom || ''}</div>
-          <div class="meta">${c.email || '—'} · ${c.tel || '—'} · ${c.historique.length} résa(s)</div>
+          <div class="meta">${c.email || '—'} · ${c.tel || '—'} · ${c.historique.length} résa(s) · ${restos || '—'} · ${paxMoy} couverts/résa</div>
         </div>
         <div class="client-badges">
+          ${avisRecu ? '<span class="badge optin">Mail avis envoyé</span>' : ''}
           <span class="badge ${fid.cls}">${fid.label}</span>
           ${c.consentement ? '<span class="badge optin">Opt-in</span>' : '<span class="badge optout">Sans consentement</span>'}
         </div>
@@ -1700,6 +1746,62 @@
       row.addEventListener('click', () => openClientModal(clients[row.dataset.idx]));
     });
   }
+
+  // ---- Dashboard clients ----
+  function statsDe(resas){
+    const valides = resas.filter(r => r.statut !== 'annulee');
+    const couverts = valides.reduce((a, r) => a + (Number(r.pax) || 0), 0);
+    const parClient = {};
+    valides.forEach(r => {
+      const k = (r.email || r.tel || '').toLowerCase();
+      if (k) parClient[k] = (parClient[k] || 0) + 1;
+    });
+    const nbClients = Object.keys(parClient).length;
+    const revenus = Object.values(parClient).filter(n => n >= 2).length;
+    const terminees = valides.filter(r => r.statut === 'terminee');
+    const eligibles = terminees.filter(r => r.email);
+    const envoyes = eligibles.filter(r => r.avisEnvoyeLe);
+    return {
+      nbResas: valides.length, couverts, nbClients, revenus,
+      paxParResa: valides.length ? couverts / valides.length : 0,
+      couvertsParClient: nbClients ? couverts / nbClients : 0,
+      tauxRetour: nbClients ? revenus / nbClients * 100 : 0,
+      terminees: terminees.length, eligibles: eligibles.length, envoyes: envoyes.length,
+      tauxAvis: eligibles.length ? envoyes.length / eligibles.length * 100 : 0
+    };
+  }
+  const fmt1 = n => n.toFixed(1).replace('.', ',');
+
+  function renderStats(){
+    const resto = document.getElementById('statsRestoFilter').value;
+    const all = loadReservations();
+    const s = statsDe(all.filter(r => !resto || r.restaurant === resto));
+    document.getElementById('statsKpis').innerHTML = `
+      <div class="kpi"><div class="val">${s.nbClients}</div><div class="lbl">Clients</div></div>
+      <div class="kpi good"><div class="val">${fmt1(s.tauxRetour)} %</div><div class="lbl">Reviennent (${s.revenus} clients, 2+ résas)</div></div>
+      <div class="kpi warn"><div class="val">${fmt1(s.paxParResa)}</div><div class="lbl">Couverts moyens / réservation</div></div>
+      <div class="kpi"><div class="val">${fmt1(s.couvertsParClient)}</div><div class="lbl">Couverts moyens / client (${s.couverts} au total)</div></div>
+      <div class="kpi"><div class="val">${s.nbResas}</div><div class="lbl">Réservations</div></div>
+      <div class="kpi"><div class="val">${s.terminees}</div><div class="lbl">Terminées</div></div>
+      <div class="kpi good"><div class="val">${s.envoyes}</div><div class="lbl">Ont reçu le mail d'avis</div></div>
+      <div class="kpi ${s.eligibles - s.envoyes > 0 ? 'bad' : ''}"><div class="val">${fmt1(s.tauxAvis)} %</div><div class="lbl">Taux d'envoi (${s.envoyes}/${s.eligibles} éligibles)</div></div>`;
+
+    const lignes = ['Perpignan', 'Montpellier'].map(n => ({ n, s: statsDe(all.filter(r => r.restaurant === n)) }));
+    document.getElementById('statsByResto').innerHTML = `
+      <table><thead><tr><th>Restaurant</th><th>Clients</th><th>Résas</th><th>Couverts</th><th>Couverts / résa</th><th>Reviennent</th><th>Mails avis</th></tr></thead><tbody>
+      ${lignes.map(l => `<tr><td>${l.n}</td><td>${l.s.nbClients}</td><td>${l.s.nbResas}</td><td>${l.s.couverts}</td><td>${fmt1(l.s.paxParResa)}</td><td>${fmt1(l.s.tauxRetour)} %</td><td>${l.s.envoyes}/${l.s.eligibles}</td></tr>`).join('')}
+      </tbody></table>`;
+
+    const envoyes = all.filter(r => (!resto || r.restaurant === resto) && r.avisEnvoyeLe)
+      .sort((a, b) => String(b.avisEnvoyeLe).localeCompare(String(a.avisEnvoyeLe))).slice(0, 30);
+    document.getElementById('statsAvis').innerHTML = envoyes.length
+      ? `<table><thead><tr><th>Client</th><th>Resto</th><th>Résa</th><th>Mail envoyé le</th></tr></thead><tbody>
+         ${envoyes.map(r => `<tr><td>${r.prenom || ''} ${r.nom || ''}</td><td>${r.restaurant}</td><td>${r.date} · ${r.pax}p</td><td>${String(r.avisEnvoyeLe).replace('T', ' ').slice(0, 16)}</td></tr>`).join('')}
+         </tbody></table>`
+      : '<div class="empty">Aucun mail d\'avis envoyé pour l\'instant.</div>';
+  }
+  document.getElementById('statsRestoFilter').addEventListener('change', renderStats);
+  document.getElementById('clientRestoFilter').addEventListener('change', () => renderClients());
 
   function openClientModal(c){
     const fid = clientFidelite(c.historique.length);

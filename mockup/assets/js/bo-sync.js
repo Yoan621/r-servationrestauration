@@ -152,6 +152,8 @@ const boSync = (() => {
             email: d.email,
             statut: d.statut
           };
+          // Marqueur posé par le cron e-mail avis (champ racine du doc) : copié pour le dashboard clients
+          if (d.avisEnvoyeLe) r.avisEnvoyeLe = d.avisEnvoyeLe; else delete r.avisEnvoyeLe;
           distantes.push(r);
           remoteRefs.add(String(r.id || r.bookingRef));
         });
