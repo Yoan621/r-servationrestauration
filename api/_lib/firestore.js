@@ -109,6 +109,47 @@ async function enregistrerBookingZelty(ref, zeltyId) {
   );
 }
 
+// Réservations de date >= dateMin (un seul champ filtré : pas d'index composite).
+// Le tri sur le statut / zeltyBookingId se fait ensuite en JavaScript.
+async function reservationsDepuis(dateMin) {
+  const data = await appel(':runQuery', {
+    method: 'POST',
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'reservations' }],
+        where: {
+          fieldFilter: { field: { fieldPath: 'date' }, op: 'GREATER_THAN_OR_EQUAL', value: { stringValue: dateMin } }
+        }
+      }
+    })
+  });
+  return (Array.isArray(data) ? data : [])
+    .filter(l => l.document)
+    .map(l => ({ ref: l.document.name.split('/').pop(), champs: l.document.fields || {} }));
+}
+
+// Met à jour le statut d'une réservation (champ racine ET data.statut : le BO
+// lit l'un ou l'autre) + des champs de suivi de la synchro Zelty.
+// `suivi` = { nomChamp: valeurChaine }, ex. { zeltyEtat: '192/16', zeltySyncLe: iso }.
+async function majStatut(ref, statut, suivi = {}) {
+  const masque = ['updatedAt'];
+  const fields = { updatedAt: { timestampValue: new Date().toISOString() } };
+  if (statut) {
+    masque.push('statut', 'data.statut');
+    fields.statut = { stringValue: statut };
+    fields.data = { mapValue: { fields: { statut: { stringValue: statut } } } };
+  }
+  for (const [k, v] of Object.entries(suivi)) {
+    masque.push(k);
+    fields[k] = { stringValue: String(v) };
+  }
+  const qs = masque.map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&');
+  return appel(`/reservations/${encodeURIComponent(ref)}?${qs}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields })
+  });
+}
+
 // Aplatit une valeur Firestore typée en valeur JS simple.
 function valeur(v) {
   if (!v || typeof v !== 'object') return v;
@@ -127,4 +168,4 @@ function valeur(v) {
   return undefined;
 }
 
-module.exports = { reservationsDuJour, marquerAvisEnvoye, lireReservation, enregistrerBookingZelty, valeur };
+module.exports = { reservationsDuJour, reservationsDepuis, majStatut, marquerAvisEnvoye, lireReservation, enregistrerBookingZelty, valeur };
