@@ -113,4 +113,55 @@ async function notifierAnnulation(r) {
   }
 }
 
-module.exports = { notifierEquipe, notifierAnnulation, texteNotif, texteAnnulation, destinataire };
+// ---- Alerte « grande table » ----
+// Règle : une réservation de PLUS de N personnes (N = GRANDE_TABLE_SEUIL, 6 par
+// défaut, donc 7 et +) déclenche une alerte WhatsApp à une personne dédiée.
+//   WHATSAPP_GRANDE_TABLE_PHONE   numéro international sans "+" (ex. 33785570869)
+//   WHATSAPP_GRANDE_TABLE_APIKEY  clé CallMeBot de CE numéro (chaque destinataire
+//                                 doit envoyer « I allow callmebot to send me messages »
+//                                 au +34 644 59 71 65 pour recevoir sa propre clé)
+//   GRANDE_TABLE_SEUIL            optionnel
+function seuilGrandeTable() {
+  const n = parseInt(process.env.GRANDE_TABLE_SEUIL || '6', 10);
+  return Number.isFinite(n) && n > 0 ? n : 6;
+}
+
+function estGrandeTable(pax) {
+  const n = parseInt(String(pax).replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(n) && n > seuilGrandeTable();
+}
+
+function texteGrandeTable(r) {
+  const lignes = [
+    `⚠️ Grande table : ${r.pax} personnes`,
+    String(r.restaurant || '?'),
+    `${r.date || '?'} à ${r.heure || '?'}`,
+    `${r.prenom || ''} ${r.nom || ''}`.trim()
+  ];
+  if (r.tel) lignes.push(`Tél: ${r.tel}`);
+  if (r.bookingRef) lignes.push(`Réf: ${r.bookingRef}`);
+  if (r.notes) lignes.push(`Note: ${r.notes}`);
+  return lignes.join('\n');
+}
+
+// N'échoue jamais. Sans clé configurée : ne fait rien et le dit.
+async function notifierGrandeTable(r) {
+  if (!estGrandeTable(r.pax)) return { envoye: false, raison: 'pas une grande table' };
+  const phone = (process.env.WHATSAPP_GRANDE_TABLE_PHONE || '').replace(/[^\d]/g, '');
+  const apikey = (process.env.WHATSAPP_GRANDE_TABLE_APIKEY || '').trim();
+  if (!phone || !apikey) return { envoye: false, raison: 'destinataire grande table non configuré', destinataire: 'grande_table' };
+
+  const url = 'https://api.callmebot.com/whatsapp.php'
+    + `?phone=${encodeURIComponent(phone)}`
+    + `&text=${encodeURIComponent(texteGrandeTable(r))}`
+    + `&apikey=${encodeURIComponent(apikey)}`;
+  try {
+    const rep = await fetch(url, { method: 'GET' });
+    if (!rep.ok) return { envoye: false, raison: `CallMeBot a répondu ${rep.status}`, destinataire: 'grande_table' };
+    return { envoye: true, destinataire: 'grande_table' };
+  } catch (e) {
+    return { envoye: false, raison: `réseau : ${e.message}`, destinataire: 'grande_table' };
+  }
+}
+
+module.exports = { notifierEquipe, notifierAnnulation, notifierGrandeTable, estGrandeTable, texteGrandeTable, texteNotif, texteAnnulation, destinataire };

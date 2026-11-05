@@ -10,7 +10,7 @@
 // La notif WhatsApp était auparavant déclenchée par le navigateur, numéro et clé
 // CallMeBot en clair dans la page (donc publics). Elle part maintenant d'ici.
 const { envoyer, htmlConfirmation } = require('./_lib/mail');
-const { notifierEquipe } = require('./_lib/whatsapp');
+const { notifierEquipe, notifierGrandeTable } = require('./_lib/whatsapp');
 const { creerBookingZelty } = require('./_lib/zelty');
 const { lireReservation, enregistrerBookingZelty, valeur } = require('./_lib/firestore');
 
@@ -54,6 +54,9 @@ module.exports = async function handler(req, res) {
   }
 
   resultat.whatsapp = await notifierEquipe({ ...r, email });
+
+  // Plus de 6 personnes : alerte dédiée (voir _lib/whatsapp.js). Sans effet sous le seuil.
+  resultat.grandeTable = await notifierGrandeTable({ ...r, email });
 
   // Synchro caisse Zelty : la réservation web est poussée en caisse (booking +
   // fiche client). Jamais bloquant — la résa est déjà enregistrée dans le CRM,
