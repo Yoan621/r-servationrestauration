@@ -4,6 +4,8 @@
 //   status 80                         : réservée, à venir
 //   status 255 + arrived_at + closed_at : client venu, table clôturée
 //   status 192 + cancel_reason == 0    : clôturée sans arrivée enregistrée (NE PAS en déduire « venu »)
+//   status 192, sans arrived_at ni closed_at (cancel_reason 0) : annulée côté restaurant, sans code
+//                                        (observé le 2026-11-05 sur la résa 4427630)
 //   status 192 + cancel_reason != 0    : annulée (16 = « Annulée par le client »,
 //                                        32 = annulation faite depuis la caisse ; autres codes possibles,
 //                                        ex. no-show : on les traite comme annulation et on les journalise)
@@ -21,14 +23,16 @@ const rang = s => ORDRE.indexOf(s);
 // Renvoie { statut, annuleeZelty, raison } ; statut === null => ne rien changer.
 function statutDepuisZelty(zelty, statutCrm) {
   const cancel = Number(zelty && zelty.cancel_reason) || 0;
-  const annuleeZelty = cancel !== 0;
+  const sansPassage = !(zelty && (zelty.arrived_at || zelty.closed_at));
+  // 192 sans code ni arrivée ni clôture = annulée (un 192 « clôturé sans arrivée » a un closed_at).
+  const annuleeZelty = cancel !== 0 || (Number(zelty && zelty.status) === 192 && sansPassage);
 
   if (annuleeZelty) {
     // Une résa déjà terminée / no-show dans le CRM ne repasse pas en annulée.
     if (statutCrm === 'annulee' || FINAUX.includes(statutCrm)) {
-      return { statut: null, annuleeZelty, raison: `annulée Zelty (code ${cancel}), CRM déjà ${statutCrm}` };
+      return { statut: null, annuleeZelty, raison: `annulée Zelty (code ${cancel || 'aucun'}), CRM déjà ${statutCrm}` };
     }
-    return { statut: 'annulee', annuleeZelty, raison: `annulée côté Zelty (code ${cancel})` };
+    return { statut: 'annulee', annuleeZelty, raison: `annulée côté Zelty (code ${cancel || 'aucun'})` };
   }
 
   const arrive = !!(zelty && zelty.arrived_at);

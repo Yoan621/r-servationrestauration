@@ -137,7 +137,12 @@ class BackOffice:
 
 # ---------- logique ----------
 def deja_annulee(z):
-    return bool(z and (z.get('cancel_reason') or 0) != 0)
+    """Même règle que api/_lib/zelty-etat.js : code d'annulation, ou 192 sans arrivée ni clôture."""
+    if not z:
+        return False
+    if (z.get('cancel_reason') or 0) != 0:
+        return True
+    return z.get('status') == 192 and not z.get('arrived_at') and not z.get('closed_at')
 
 
 def traiter_annulations(bo, liste):
@@ -175,7 +180,8 @@ def doit_synchroniser():
     except OSError:
         pass
     os.makedirs(ETAT, exist_ok=True)
-    open(fichier, 'w').close()
+    if not DRY:
+        open(fichier, 'w').close()
     return True
 
 
