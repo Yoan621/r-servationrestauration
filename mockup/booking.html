@@ -456,12 +456,21 @@
   const urlParams = new URLSearchParams(window.location.search);
   const linkId = urlParams.get('link');
   if (linkId) {
-    const links = loadLinks();
-    activeLink = links.find(l => l.id === linkId);
-    if (activeLink) {
-      activeLink.clics = (activeLink.clics || 0) + 1;
-      saveLinks(links);
-    }
+    // Lien créé dans le back-office : stocké dans Firestore (collection `liens`),
+    // pas dans le localStorage du visiteur (qui ne contient jamais ces liens).
+    activeLink = { id: linkId, source: 'site' };
+    (async () => {
+      const l = await fricacciaApi.getLien(linkId);
+      if (!l) return;
+      activeLink = l;
+      const clicKey = 'fricaccia_clic_' + linkId;
+      let dejaCompte = false;
+      try { dejaCompte = !!sessionStorage.getItem(clicKey); } catch(e){}
+      if (!dejaCompte) {
+        try { sessionStorage.setItem(clicKey, '1'); } catch(e){}
+        fricacciaApi.compterClic(linkId);
+      }
+    })();
   } else {
     const directResto = urlParams.get('restaurant');
     const directSource = urlParams.get('source');
@@ -599,7 +608,8 @@
       note: document.getElementById('note').value,
       offresEmail: document.getElementById('offersEmail').checked,
       offresSms: document.getElementById('offersSms').checked,
-      source: activeLink ? activeLink.source : 'site'
+      source: activeLink ? activeLink.source : 'site',
+      linkId: activeLink && activeLink.id ? activeLink.id : null
     };
 
     let bookingRef = null, error = null;

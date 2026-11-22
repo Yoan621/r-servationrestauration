@@ -371,5 +371,28 @@ service cloud.firestore {
       // - Backoffice staff only
       allow delete: if isStaff();
     }
+
+    // 4. Liens de réservation tracés (?link=l_xxx)
+    // Le widget public lit le lien (get) et incrémente UNIQUEMENT `clics` de +1.
+    // Création / modification / suppression / liste : staff seulement.
+    function isValidLien(d, id) {
+      return d.keys().hasAll(['id', 'source', 'clics']) &&
+        d.keys().hasOnly(['id', 'restaurant', 'source', 'label', 'clics', 'creeLe']) &&
+        d.id == id && id.matches('^l_[0-9]{6,20}$') &&
+        d.source is string && d.source.size() <= 50 &&
+        (!('restaurant' in d) || d.restaurant == null || (d.restaurant is string && d.restaurant.size() <= 40)) &&
+        (!('label' in d) || (d.label is string && d.label.size() <= 120)) &&
+        d.clics is int && d.clics >= 0 &&
+        (!('creeLe' in d) || (d.creeLe is string && d.creeLe.size() <= 50));
+    }
+    match /liens/{lienId} {
+      allow get: if true;
+      allow list: if isStaff();
+      allow create: if isStaff() && isValidLien(request.resource.data, lienId);
+      allow update: if (isStaff() && isValidLien(request.resource.data, lienId)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clics']) &&
+         request.resource.data.clics == resource.data.clics + 1);
+      allow delete: if isStaff();
+    }
   }
 }

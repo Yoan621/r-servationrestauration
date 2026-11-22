@@ -1536,6 +1536,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
     renderBell();
     renderIntegration();
     if (document.getElementById('view-stats').classList.contains('active')) renderStats();
+    if (document.getElementById('view-links').classList.contains('active')) renderLinks();
   }
 
   // Switch de compte (façon Instagram : avatar + menu déroulant des comptes)
@@ -1726,6 +1727,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
     };
     links.push(link);
     saveLinks(links);
+    boSync.pushLien(link);
     document.getElementById('newLinkLabel').value = '';
     renderLinks();
   });
@@ -1773,6 +1775,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
       });
       row.querySelector('.del-btn').addEventListener('click', () => {
         saveLinks(loadLinks().filter(l => l.id !== id));
+        boSync.deleteLien(id);
         renderLinks();
       });
     });

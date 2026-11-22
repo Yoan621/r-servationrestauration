@@ -41,6 +41,20 @@ const fricacciaApi = {
     }
   },
 
+  // Lien tracé : lecture publique + compteur de clics (+1, règles Firestore)
+  async getLien(id) {
+    if (!fbDb || !/^l_\d{6,20}$/.test(String(id || ''))) return null;
+    try {
+      const doc = await fbDb.collection('liens').doc(id).get();
+      return doc.exists ? doc.data() : null;
+    } catch (e) { console.warn('[fricacciaApi] getLien', e); return null; }
+  },
+  async compterClic(id) {
+    try {
+      await fbDb.collection('liens').doc(id).update({ clics: firebase.firestore.FieldValue.increment(1) });
+    } catch (e) { console.warn('[fricacciaApi] compterClic', e); }
+  },
+
   // Création d'une réservation depuis le widget public
   async creerReservation(b) {
     if (!fbDb) throw new Error('Base de données non disponible');
@@ -87,6 +101,7 @@ const fricacciaApi = {
       offresEmail: !!b.offresEmail,
       offresSms: !!b.offresSms,
       source: String(b.source || 'site').trim().slice(0, 40),
+      ...(/^l_\d{6,20}$/.test(String(b.linkId || '')) ? { linkId: String(b.linkId) } : {}),
       statut: 'nouvelle',
       creeLe: new Date().toISOString()
     };

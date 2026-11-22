@@ -14,6 +14,7 @@ const boSync = (() => {
   let pending = 0;
   let enLigne = null;
   let unsubscribeListeners = [];
+  const liensMigres = new Set();
 
   const readLS = (k, def) => {
     try {
@@ -86,6 +87,18 @@ const boSync = (() => {
         ecrire(() => fbDb.collection('reservations').doc(ref).delete());
       }
     }
+  }
+
+  // Liens de réservation : set / delete dans la collection `liens`
+  function pushLien(l) {
+    if (!fbDb) return;
+    const doc = { id: l.id, source: l.source || 'site', clics: l.clics || 0, label: l.label || '', creeLe: l.creeLe || new Date().toISOString() };
+    if (l.restaurant) doc.restaurant = l.restaurant;
+    ecrire(() => fbDb.collection('liens').doc(l.id).set(doc));
+  }
+  function deleteLien(id) {
+    if (!fbDb) return;
+    ecrire(() => fbDb.collection('liens').doc(id).delete());
   }
 
   function pushReglage(cle, valeur) {
@@ -219,6 +232,23 @@ const boSync = (() => {
       });
       unsubscribeListeners.push(unsubRestos);
 
+      // 6. Listener temps réel sur les liens (clics incrémentés par le widget public)
+      const unsubLiens = fbDb.collection('liens').onSnapshot(snapshot => {
+        const liens = [];
+        snapshot.forEach(doc => liens.push(doc.data()));
+        // Migration : liens créés avant Firestore (localStorage seul) → on les pousse
+        const ids = new Set(liens.map(l => l.id));
+        const orphelins = readLS('fricaccia_links', []).filter(l => l && l.id && !ids.has(l.id) && !liensMigres.has(l.id));
+        orphelins.forEach(l => { liensMigres.add(l.id); pushLien(l); liens.push(l); });
+        liens.sort((a, b) => String(a.creeLe || '').localeCompare(String(b.creeLe || '')));
+        const avant = JSON.stringify(readLS('fricaccia_links', []));
+        if (avant !== JSON.stringify(liens)) {
+          writeLS('fricaccia_links', liens);
+          onChange();
+        }
+      }, err => console.error('[boSync] Erreur listener liens', err));
+      unsubscribeListeners.push(unsubLiens);
+
       bandeau(true);
     } catch (e) {
       console.error('[boSync] Erreur initialisation Firestore', e);
@@ -231,5 +261,5 @@ const boSync = (() => {
     demarrerEcoute();
   }
 
-  return { init, pushReservations, pushReglage, setPause, poll: demarrerEcoute };
+  return { init, pushReservations, pushLien, deleteLien, pushReglage, setPause, poll: demarrerEcoute };
 })();
