@@ -239,6 +239,22 @@
   .bar .cnt{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--char);white-space:nowrap;}
   .bar .cnt.zero{color:var(--muted);font-weight:600;}
 
+  .rj-filtres{display:flex;gap:8px;flex-wrap:wrap;}
+  .rj-filtres .pax-select{width:auto;max-width:100%;}
+  .rj-legende{display:flex;gap:16px;font-size:12px;margin-bottom:8px;}
+  .rj-legende i,.rj-tip i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;}
+  .rj-chart{position:relative;min-height:260px;}
+  .rj-chart svg{display:block;max-width:100%;}
+  .rj-chart text{font-size:11px;fill:var(--muted);}
+  .rj-hit{fill:transparent;}
+  .rj-hit:hover,.rj-hit:focus{fill:rgba(38,38,38,.06);outline:none;}
+  .rj-tip{position:absolute;top:0;pointer-events:none;background:var(--char);color:#fff;font-size:12px;line-height:1.5;padding:7px 10px;border-radius:8px;white-space:nowrap;}
+  .rj-table{max-height:460px;overflow:auto;}
+  .rj-table th{position:sticky;top:0;background:var(--paper2);}
+  .rj-table td{font-variant-numeric:tabular-nums;}
+  .rj-total td{font-weight:800;background:var(--paper);}
+  .rj-auj td{font-weight:700;}
+
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th{text-align:left;color:var(--muted);font-weight:600;padding:7px 8px;border-bottom:1px solid var(--border);font-size:12px;}
   td{padding:9px 8px;border-bottom:1px solid var(--border);}
@@ -529,6 +545,12 @@
         </a>
       </li>
       <li class="sidebar-menu-item">
+        <a class="sidebar-menu-button tab-btn" data-view="resajour" href="#">
+          <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">event_note</span>
+          <span class="sidebar-menu-text">Réservations par jour</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
         <a class="sidebar-menu-button tab-btn" data-view="links" href="#">
           <span class="material-icons sidebar-menu-icon sidebar-menu-icon--left">link</span>
           <span class="sidebar-menu-text">Liens de réservation</span>
@@ -715,6 +737,48 @@
     <p class="note">Clients, couverts et mails hors réservations annulées ; le taux d'annulation = annulées / toutes les réservations. Couvert = personne attablée (champ « pers. » de la réservation).</p>
   </div>
 
+  <div class="view" id="view-resajour">
+    <div class="card">
+      <div class="card-head">
+        <h2 style="margin:0;">Réservations par jour</h2>
+        <div class="rj-filtres">
+          <select id="rjResto" class="pax-select" aria-label="Restaurant">
+            <option value="">Tous les restaurants</option>
+            <option value="Perpignan">Perpignan</option>
+            <option value="Montpellier">Montpellier</option>
+          </select>
+          <select id="rjPeriode" class="pax-select" aria-label="Période">
+            <option value="7">7 derniers jours</option>
+            <option value="30" selected>30 derniers jours</option>
+            <option value="90">90 derniers jours</option>
+            <option value="mois">Mois en cours</option>
+            <option value="mois-1">Mois précédent</option>
+            <option value="avenir">30 jours à venir</option>
+          </select>
+          <select id="rjBase" class="pax-select" aria-label="Date utilisée">
+            <option value="repas">Par date du repas</option>
+            <option value="prise">Par date de prise de résa</option>
+          </select>
+          <select id="rjMesure" class="pax-select" aria-label="Mesure du graphique">
+            <option value="resas">Graphique : réservations</option>
+            <option value="couverts">Graphique : couverts</option>
+          </select>
+        </div>
+      </div>
+      <div class="kpis" id="rjKpis" style="grid-template-columns:repeat(4,1fr);"></div>
+    </div>
+    <div class="card">
+      <h2 id="rjTitre">Par jour</h2>
+      <div id="rjLegende" class="rj-legende"></div>
+      <div id="rjChart" class="rj-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Détail par jour</h2>
+      <div id="rjTable" class="rj-table"></div>
+    </div>
+    <p class="note">Réservations et couverts hors annulations (no-shows inclus, détaillés à part). « Via un lien » = réservation faite depuis un lien tracé.</p>
+  </div>
+
   <div class="view" id="view-links">
     <div class="card">
       <h2>Créer un lien de réservation</h2>
@@ -890,6 +954,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="assets/js/firebase-config.js"></script>
 <script src="assets/js/bo-sync.js"></script>
+<script src="assets/js/resa-jour.js"></script>
 <script>
   // ---- Login gate (Firebase Auth) ----
   // Deux niveaux, volontairement distincts :
@@ -1536,6 +1601,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
     renderBell();
     renderIntegration();
     if (document.getElementById('view-stats').classList.contains('active')) renderStats();
+    if (document.getElementById('view-resajour').classList.contains('active')) renderResaJour(loadReservations());
     if (document.getElementById('view-links').classList.contains('active')) renderLinks();
   }
 
@@ -1663,6 +1729,7 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
       if (btn.dataset.view === 'clients') renderClients();
       if (btn.dataset.view === 'stats') renderStats();
+      if (btn.dataset.view === 'resajour') renderResaJour(loadReservations());
       if (btn.dataset.view === 'links') renderLinks();
       if (btn.dataset.view === 'acces') renderAcces();
       if (window.innerWidth <= 900) document.getElementById('appSidebar').classList.add('mobile-hidden');
@@ -1937,6 +2004,8 @@ document.getElementById('logoutBtn').addEventListener('click', async function(){
       : '<div class="empty">Aucun mail d\'avis envoyé pour l\'instant.</div>';
   }
   document.getElementById('statsRestoFilter').addEventListener('change', renderStats);
+  ['rjResto', 'rjPeriode', 'rjBase', 'rjMesure'].forEach(id =>
+    document.getElementById(id).addEventListener('change', () => renderResaJour(loadReservations())));
   document.getElementById('clientRestoFilter').addEventListener('change', () => renderClients());
 
   function openClientModal(c){
